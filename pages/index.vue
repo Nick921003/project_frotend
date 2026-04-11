@@ -135,13 +135,29 @@ const isSaving = ref(false)
 // [核心邏輯]：監聽使用者狀態，若登入則去 profiles 撈取他的專屬膚質
 watchEffect(async () => {
   if (user.value) {
-    const { data } = await supabase
+    // JWT token 中用戶 ID 應該在 sub 或 id 欄位
+    const userId = user.value.sub || user.value.id
+    
+    if (!userId) {
+      console.error('❌ 無法取得用戶 ID，user 物件:', user.value)
+      return
+    }
+    
+    console.log('✅ 成功取得用戶 ID:', userId)
+    
+    const { data, error } = await supabase
       .from('profiles')
       .select('base_skin_type')
-      .eq('id', user.value.id)
+      .eq('id', userId)
       .single()
+    
+    if (error) {
+      console.warn('⚠️  查詢 profiles 表失敗:', error)
+      return
+    }
       
     if (data?.base_skin_type) {
+      console.log('✅ 從 profiles 取得膚質:', data.base_skin_type)
       selectedSkinType.value = data.base_skin_type
     }
   }

@@ -1,6 +1,6 @@
 // server/api/analyze.post.ts
 import { createClient } from '@supabase/supabase-js';
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import { getAIService } from '~/server/services/aiService';
 
 // 定義有效的膚質類型
 const VALID_SKIN_TYPES = ['oily', 'dry', 'combination', 'sensitive', 'normal'];
@@ -9,9 +9,9 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event);
   const supabase = createClient(
     config.public.supabaseUrl,
-    config.supabaseServiceKey
+    config.supabaseSecretKey
   );
-  const genAI = new GoogleGenerativeAI(config.geminiApiKey);
+  const aiService = getAIService();
 
   try {
     const body = await readBody(event);
@@ -32,46 +32,16 @@ export default defineEventHandler(async (event) => {
     // 1. 清洗 Base64 (去除可能來自前端的 data:image/jpeg;base64, 前綴)
     const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
-    // 2. 設定 Gemini 模型與嚴格的 System Prompt
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      systemInstruction: `你是一位國際頂尖的化妝品配方師與影像辨識專家。
-你的唯一任務是：辨識使用者上傳的保養品成分表照片，提取所有成分，並將其正規化。
-嚴格規則：
-1. 將所有語言（包含中文、日文、韓文）、俗名或錯別字，強制精確翻譯為標準的「INCI Name (國際化妝品原料命名)」，全英文。
-2. 忽略標點符號、濃度百分比、用途說明等非成分資訊。
-3. 你的輸出必須是一個純粹的字串陣列 (JSON Array)。
-4. 絕對不可包含任何解釋、問候語、Markdown 標記 (如 \`\`\`json) 或其他廢話。`,
-      generationConfig: {
-        temperature: 0.1, // 降低隨機性，提高翻譯與格式穩定性
-        responseMimeType: "application/json",
-        // 強制鎖死輸出格式為 Array of Strings
-        responseSchema: {
-          type: SchemaType.ARRAY,
-          items: {
-            type: SchemaType.STRING,
-          },
-        },
-      },
-    });
-
-    // 3. 呼叫 Gemini API
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: "image/jpeg", // 即使是 png，Gemini API 也能自動相容解析
-        },
-      },
-      "請萃取圖片中的成分，並依照指示回傳 INCI Array。"
-    ]);
-
-    // 4. 取得並解析結果 (因為已鎖死 JSON，可安全 parse)
-    const responseText = result.response.text();
-    const inciArray: string[] = JSON.parse(responseText);
-
-    if (!Array.isArray(inciArray) || inciArray.length === 0) {
-      throw new Error("AI 無法從圖片中辨識出任何有效成分");
+    // 2. 使用 AIService 進行圖像分析
+    let inciArray: string[];
+    try {
+      console.log('[Analyze API] 使用 AIService 提取圖像成分');
+      inciArray = await aiService.extractIngredientsFromImage(base64Data);
+    } catch (extractError: any) {
+      throw createError({ 
+        statusCode: 500, 
+        statusMessage: 'AI 圖像分析失敗: ' + extractError.message 
+      });
     }
 
     // 5. 查詢 Supabase official_ingredients 進行比對
@@ -123,31 +93,15 @@ export default defineEventHandler(async (event) => {
     // 計算安全/未知成分（使用 Set 提升性能）
     const safeOrUnknownIngredients = inciArray.filter(inci => !flaggedInciNames.has(inci));
 
-    // 7. 啟動 AI 引擎進行「配方綜合評估」
-    // 使用同一個 model，但不使用 Structured Outputs，讓他自然語言輸出
-    const summaryModel = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: { temperature: 0.3 } // 稍微給一點靈活性來寫評語
-    });
-
-    const skinTypeLabel = skinType || '一般膚質 (未提供)';
-    
-    // 嚴謹的 Prompt，要求 AI 扮演配方師給出結論
-    const summaryPrompt = `
-      你是一位專業的化妝品配方師。請根據以下的保養品 INCI 成分表，以及使用者的膚質，給出一段專業、白話且具有價值的整體評價。
-      
-      成分表：${inciArray.join(', ')}
-      使用者膚質：${skinTypeLabel}
-      
-      嚴格輸出規則：
-      1. 點出這支產品的「核心功效」（如：偏向保濕、抗老、酸類煥膚等）。
-      2. 針對該使用者的膚質，給出「是否推薦」以及「使用建議或潛在風險」。
-      3. 字數限制在 100 字以內，語氣要像專業且溫柔的皮膚科醫生。
-      4. 純文字輸出，不可使用任何 Markdown 標記 (如 ** 或 #)。
-    `;
-
-    const summaryResult = await summaryModel.generateContent(summaryPrompt);
-    const aiSummary = summaryResult.response.text();
+    // 7. 使用 AIService 生成配方綜合評估
+    let aiSummary: string;
+    try {
+      console.log('[Analyze API] 使用 AIService 生成產品評語');
+      aiSummary = await aiService.generateProductSummary(inciArray, skinType || 'general');
+    } catch (summaryError: any) {
+      console.error('[Analyze API] AI 評語生成失敗:', summaryError.message);
+      aiSummary = '產品評語生成失敗，但成分分析已完成。';
+    }
 
     // 8. 最終資料重組與回傳
     return {

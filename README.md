@@ -41,21 +41,38 @@
 
 ```
 beauty-analyzer/
-├── pages/              # Nuxt 頁面路由
-│   ├── index.vue       # 首頁 - 成分分析主功能
-│   ├── login.vue       # 登入/註冊頁面
-│   └── cabinet.vue     # 個人柜台（規劃中）
-│
+├── pages/                         # Nuxt 頁面路由
+│   ├── index.vue                  # 成分分析 + 入櫃入口
+│   ├── beauty-plan.vue            # 排程總覽
+│   ├── routines/new.vue           # 新增/AI 偏好設定
+│   ├── routines/[id].vue          # 排程編輯與推薦展示
+│   ├── products/[id]/edit.vue     # 產品編輯
+│   ├── profile.vue                # 個資中心
+│   ├── profile-setup.vue          # 個資設定（Store 版本）
+│   ├── cabinet.vue                # 保養品櫃
+│   └── login.vue                  # 登入/註冊
+├── composables/
+│   ├── useCreateRoutine.ts        # 建立排程流程封裝
+│   └── useCabinet.ts              # 保養品櫃流程封裝
+├── stores/
+│   └── useUserProfile.ts          # 個資 Store
 ├── server/
+│   ├── services/
+│   │   └── aiService.ts           # AI 服務層（Prompt + Gemini 調用）
 │   └── api/
-│       ├── analyze.post.ts      # POST /api/analyze - 成分分析核心端點
-│       └── cabinet/
-│           └── save.post.ts     # POST /api/cabinet/save - 保存產品
-│
-├── app.vue            # 應用入口點（含 <NuxtPage /> 路由出口）
-├── nuxt.config.ts     # Nuxt 配置（模組、運行時配置）
-├── package.json       # 依賴清單
-└── .env              # 環境變數（需自行配置）
+│       ├── analyze.post.ts
+│       ├── cabinet/*
+│       ├── profile/*
+│       └── routines/*
+├── utils/
+│   └── productCategories.ts       # 分類單一來源與正規化
+├── types/
+│   ├── routine.ts
+│   └── database.types.ts
+├── app.vue
+├── nuxt.config.ts
+├── package.json
+└── .env
 ```
 
 ## 🚀 快速開始
@@ -89,7 +106,9 @@ npm install
 # Supabase
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_KEY=your_supabase_service_role_key
+NUXT_SUPABASE_SECRET_KEY=your_supabase_service_role_key
+# 舊名稱（仍可相容，但建議改為上方新名稱）
+# SUPABASE_SERVICE_KEY=your_supabase_service_role_key
 
 # Google Gemini
 GEMINI_API_KEY=your_gemini_api_key

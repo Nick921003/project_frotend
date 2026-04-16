@@ -1,4 +1,5 @@
 import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server';
+import { normalizeProductCategory } from '~/utils/productCategories';
 
 export default defineEventHandler(async (event) => {
   // 1. 驗證使用者登入狀態 (防堵未登入的 API 呼叫)
@@ -27,6 +28,7 @@ export default defineEventHandler(async (event) => {
 
   // 2. 取得有權限的 Supabase 客戶端
   const supabase = await serverSupabaseClient(event);
+  const normalizedCategory = normalizeProductCategory(productCategory);
 
   // 3. 寫入資料庫
   const { data, error } = await supabase
@@ -34,7 +36,7 @@ export default defineEventHandler(async (event) => {
     .insert({
       user_id: userId,
       product_name: productName,
-      product_category: productCategory || '未分類',
+      product_category: normalizedCategory,
       raw_ingredients: rawIngredients,
       analysis_result: analysisResult
     } as any)

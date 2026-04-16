@@ -30,11 +30,34 @@
     <!-- 2. 圖片上傳區 -->
     <div style="margin-bottom: 20px; padding: 15px; border: 2px dashed #ccc; border-radius: 8px;">
       <label style="font-weight: bold; display: block; margin-bottom: 8px;">步驟 2：上傳成分表照片</label>
+
+      <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 10px;">
+        <input
+          v-model="productName"
+          type="text"
+          placeholder="產品名稱（可不填，系統會自動命名）"
+          :disabled="isLoading"
+          style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;"
+        />
+
+        <select
+          v-model="productCategory"
+          :disabled="isLoading"
+          style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;"
+        >
+          <option v-for="cat in categoryOptions" :key="cat" :value="cat">{{ cat }}</option>
+        </select>
+      </div>
+
       <input type="file" accept="image/jpeg, image/png, image/webp" @change="handleImageUpload" :disabled="isLoading" />
       
       <div v-if="imageBase64" style="margin-top: 10px;">
         <img :src="imageBase64" alt="預覽" style="max-height: 150px; border-radius: 4px;" />
       </div>
+
+      <p v-if="fromRoutine" style="margin-top: 10px; font-size: 0.85em; color: #2563eb;">
+        來自排程頁：分析並加入保養品櫃後，將自動返回原排程頁。
+      </p>
     </div>
 
     <!-- 3. 送出按鈕 -->
@@ -43,8 +66,12 @@
       :disabled="!imageBase64 || isLoading"
       style="width: 100%; padding: 12px; background: #000; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer;"
     >
-      {{ isLoading ? '🤖 AI 與資料庫比對中...' : '開始分析成分' }}
+      {{ isLoading ? '🤖 AI 分析與保存中...' : '開始分析成分並加入保養品櫃' }}
     </button>
+
+    <div v-if="saveMsg" style="margin-top: 12px; padding: 10px; background: #ecfdf3; color: #166534; border: 1px solid #86efac; border-radius: 6px;">
+      {{ saveMsg }}
+    </div>
 
     <!-- 錯誤訊息 -->
     <div v-if="errorMsg" style="margin-top: 20px; padding: 10px; background: #ffebee; color: #c62828; border-radius: 4px;">
@@ -94,20 +121,9 @@
         <p style="line-height: 1.6; margin-bottom: 0;">{{ result.data.overallSummary }}</p>
       </div>
 
-      <!-- 儲存至保養品櫃區塊 (限會員) -->
-      <div v-if="user" style="margin-top: 20px; padding: 15px; background: #fffbe6; border: 1px solid #ffe58f; border-radius: 8px;">
-        <h4 style="margin-top: 0;">💾 儲存至我的保養櫃</h4>
-        <input v-model="productName" type="text" placeholder="請輸入產品名稱 (例如：寶拉珍選水楊酸)" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ddd;" />
-        <button 
-          @click="saveToCabinet" 
-          :disabled="isSaving"
-          style="width: 100%; padding: 10px; background: #1890ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;"
-        >
-          {{ isSaving ? '儲存中...' : '將此產品加入保養庫' }}
-        </button>
-      </div>
-      <div v-else style="margin-top: 20px; text-align: center; color: #666; padding: 15px; background: #f5f5f5; border-radius: 8px;">
-        <p>登入會員即可將產品儲存至專屬保養庫，並解鎖一週排程分析！</p>
+      <!-- 提示：前往個人資料保管理保養品 -->
+      <div v-if="user" style="margin-top: 20px; padding: 15px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 8px; text-align: center;">
+        <p style="margin: 0; color: #0050b3;">💡 要將此產品加入保養庫？請前往 <router-link to="/profile-setup" style="font-weight: bold; color: #1890ff; text-decoration: none;">個人資料</router-link> 管理您的保養品庫存</p>
       </div>
     </div>
 
@@ -115,11 +131,14 @@
 </template>
 
 <script setup>
-import { ref, watchEffect } from 'vue'
+import { onMounted, ref, watchEffect } from 'vue'
+import { PRODUCT_CATEGORIES, resolveProductCategory } from '~/utils/productCategories'
 
 // Supabase Composables
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()
+const route = useRoute()
+const router = useRouter()
 
 // 狀態管理
 const selectedSkinType = ref('oily') // 訪客預設值
@@ -127,10 +146,13 @@ const imageBase64 = ref(null)
 const isLoading = ref(false)
 const result = ref(null)
 const errorMsg = ref(null)
-
-// 儲存至保養庫專用狀態
+const saveMsg = ref('')
+const fromRoutine = ref(false)
+const returnRoutineId = ref('')
 const productName = ref('')
-const isSaving = ref(false)
+const productCategory = ref('其他')
+
+const categoryOptions = PRODUCT_CATEGORIES
 
 // [核心邏輯]：監聽使用者狀態，若登入則去 profiles 撈取他的專屬膚質
 watchEffect(async () => {
@@ -187,6 +209,7 @@ const analyzeIngredients = async () => {
   isLoading.value = true
   result.value = null
   errorMsg.value = null
+  saveMsg.value = ''
   
   try {
     const res = await $fetch('/api/analyze', {
@@ -194,11 +217,45 @@ const analyzeIngredients = async () => {
       body: {
         imageBase64: imageBase64.value,
         skinType: selectedSkinType.value // 動態傳入使用者選擇的膚質
-      }
+      },
+      timeout: 60000
     })
     
     result.value = res
     console.log('✅ 完整工作流測試成功:', res)
+
+    if (!user.value) {
+      saveMsg.value = '⚠️ 已分析完成。請先登入後再加入保養品櫃。'
+      return
+    }
+
+    const finalName = productName.value?.trim() || `未命名產品 ${new Date().toLocaleDateString('zh-TW')}`
+    const finalCategory = productCategory.value || '其他'
+    const rawIngredients = JSON.stringify(res?.data?.rawAiOutput || [])
+
+    await $fetch('/api/cabinet/save', {
+      method: 'POST',
+      body: {
+        productName: finalName,
+        productCategory: finalCategory,
+        rawIngredients,
+        analysisResult: res?.data || null
+      },
+      timeout: 30000
+    })
+
+    saveMsg.value = '✅ 已加入保養品櫃'
+
+    if (fromRoutine.value && returnRoutineId.value) {
+      setTimeout(() => {
+        router.push({
+          path: `/routines/${returnRoutineId.value}`,
+          query: {
+            cabinetUpdated: '1'
+          }
+        })
+      }, 600)
+    }
 
   } catch (error) {
     console.error('❌ API 請求失敗:', error)
@@ -208,38 +265,28 @@ const analyzeIngredients = async () => {
   }
 }
 
-// [新增邏輯]：儲存到保養品櫃
-const saveToCabinet = async () => {
-  if (!productName.value) {
-    alert('請輸入產品名稱')
-    return
-  }
-
-  isSaving.value = true
-  try {
-    const res = await $fetch('/api/cabinet/save', {
-      method: 'POST',
-      body: {
-        productName: productName.value,
-        productCategory: '保養品', // 未來你可以做成下拉選單讓使用者選精華液、乳霜等
-        rawIngredients: result.value.data.rawAiOutput,
-        analysisResult: result.value.data.analysis // 包含紅黃綠燈的 JSON
-      }
-    })
-    alert('✅ 儲存成功！')
-    console.log(res)
-    productName.value = '' // 清空輸入框
-  } catch (error) {
-    alert('❌ 儲存失敗：' + (error.data?.statusMessage || error.message))
-  } finally {
-    isSaving.value = false
-  }
-}
-
 // 登出功能
 const handleLogout = async () => {
   await supabase.auth.signOut()
   result.value = null
   alert('已登出')
 }
+
+onMounted(() => {
+  const from = typeof route.query.from === 'string' ? route.query.from : ''
+  const routineId = typeof route.query.routineId === 'string' ? route.query.routineId : ''
+  const categoryHint = typeof route.query.category === 'string' ? route.query.category : ''
+
+  fromRoutine.value = from === 'routine' && !!routineId
+  returnRoutineId.value = routineId
+
+  if (categoryHint) {
+    const resolvedHint = resolveProductCategory(categoryHint)
+    if (resolvedHint) {
+      productCategory.value = resolvedHint
+    } else {
+      productName.value = categoryHint
+    }
+  }
+})
 </script>

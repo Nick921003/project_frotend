@@ -1,6 +1,6 @@
-# 🧴 美容產品成分分析器 (Beauty Analyzer)
+# 🧴 智能保養分析平台
 
-一個使用 **AI 智能分析** 和 **個性化膚質判斷** 的美容產品成分檢測平台。上傳產品照片，即時提取成分清單，並根據你的膚質類型給出專業的安全建議。
+以 **AI 成分分析** 為核心，結合個人化膚質判斷與每週保養排程管理的全端應用。上傳產品照片，即時提取成分清單，根據膚質給出專業建議，並生成個人化每週保養規劃。
 
 ## ✨ 核心功能
 
@@ -20,59 +20,69 @@
 - 🟢 **綠色安全** - 該膚質友好成分
 - 💜 **AI 總結** - 產品對你膚質的整體評價
 
+### � 每週保養排程
+- AI 自動根據膚質與產品庫存生成個人化保養規劃
+- 拖拽式排程編輯（早晨 / 晚間 × 週一至週日）
+- AI 建議添購缺少的功效品項
+
+### 🧴 保養品庫存管理
+- 新增、編輯、刪除產品，記錄成分分析結果
+- 產品分類正規化（支援中英文別名）
+
 ### 👤 會員系統
-- **Supabase 雙因素認證** - 郵件密碼安全登入
-- **膚質檔案** - 首次註冊時選擇膚質類型（油性/乾性/混合/敏感/中性）
-- **個人柜台** - 保存已分析的產品供日後查看
+- **Supabase Auth** - 郵件密碼安全登入
+- **膚質檔案** - 設定膚質、性別、出生年份、肌膚問題
+- **Pinia 狀態管理** - 集中處理個人資料
 
 ## 🏗️ 技術架構
 
 | 層級 | 技術棧 |
 |------|--------|
-| **前端框架** | Nuxt 4 + Vue 3 (Composition API) |
-| **樣式** | 內聯 CSS (可擴展為 Tailwind/UnoCSS) |
-| **後端/API** | Nitro (Nuxt Server) |
-| **AI 引擎** | Google Generative AI (gemini-2.5-flash) |
-| **數據庫** | Supabase (PostgreSQL) |
+| **前端框架** | Nuxt 4 + Vue 3 Composition API |
+| **狀態管理** | Pinia + @pinia/nuxt |
+| **拖拽** | vuedraggable 4 |
+| **後端 / API** | Nitro（Nuxt Server Routes）|
+| **AI 引擎** | Google Generative AI（gemini-2.5-flash）|
+| **資料庫** | Supabase（PostgreSQL）|
 | **認證** | Supabase Auth + JWT |
-| **部署目標** | Vercel/Netlify (支持無伺服器環境) |
+| **部署** | Vercel（推薦）|
 
 ## 📁 專案結構
 
 ```
-beauty-analyzer/
-├── pages/                         # Nuxt 頁面路由
-│   ├── index.vue                  # 成分分析 + 入櫃入口
-│   ├── beauty-plan.vue            # 排程總覽
-│   ├── routines/new.vue           # 新增/AI 偏好設定
-│   ├── routines/[id].vue          # 排程編輯與推薦展示
-│   ├── products/[id]/edit.vue     # 產品編輯
-│   ├── profile.vue                # 個資中心
-│   ├── profile-setup.vue          # 個資設定（Store 版本）
-│   ├── cabinet.vue                # 保養品櫃
-│   └── login.vue                  # 登入/註冊
+project_frontend/
+├── pages/
+│   ├── index.vue               # 成分分析入口
+│   ├── beauty-plan.vue         # 保養計劃總覽
+│   ├── cabinet.vue             # 保養品庫存
+│   ├── profile.vue             # 個人資料中心
+│   ├── profile-setup.vue       # 個人資料設定（Pinia）
+│   ├── login.vue               # 登入 / 註冊
+│   ├── routines/
+│   │   ├── new.vue             # 新增排程
+│   │   └── [id].vue            # 排程編輯（拖拽）
+│   └── products/
+│       └── [id]/edit.vue       # 產品編輯
 ├── composables/
-│   ├── useCreateRoutine.ts        # 建立排程流程封裝
-│   └── useCabinet.ts              # 保養品櫃流程封裝
+│   ├── useCreateRoutine.ts     # 建立排程 composable
+│   └── useCabinet.ts           # 保養品庫 composable
 ├── stores/
-│   └── useUserProfile.ts          # 個資 Store
+│   ├── useUserProfile.ts       # 個人資料 Store
+│   └── useRoutinesStore.ts     # 排程 Store
 ├── server/
-│   ├── services/
-│   │   └── aiService.ts           # AI 服務層（Prompt + Gemini 調用）
+│   ├── services/aiService.ts   # Gemini AI 服務層
 │   └── api/
 │       ├── analyze.post.ts
-│       ├── cabinet/*
-│       ├── profile/*
-│       └── routines/*
-├── utils/
-│   └── productCategories.ts       # 分類單一來源與正規化
+│       ├── cabinet/            # 保養品 CRUD
+│       ├── profile/            # 個人資料 GET / POST
+│       └── routines/           # 排程 CRUD + 排序同步
 ├── types/
-│   ├── routine.ts
-│   └── database.types.ts
-├── app.vue
-├── nuxt.config.ts
-├── package.json
-└── .env
+│   ├── routine.ts              # 排程相關型別
+│   └── database.types.ts       # Supabase 自動生成型別
+├── utils/
+│   └── productCategories.ts    # 分類別名正規化
+├── app.vue                     # 全域導航列
+└── nuxt.config.ts
 ```
 
 ## 🚀 快速開始
@@ -94,7 +104,7 @@ beauty-analyzer/
 
 ```bash
 git clone https://github.com/Nick921003/project_frotend.git
-cd project_frotend/beauty-analyzer
+cd project_frotend
 npm install
 ```
 
@@ -273,9 +283,50 @@ CREATE TABLE user_cabinet (
 
 有任何問題或建議，歡迎開立 GitHub Issue。
 
+## ☁️ 部署至 Vercel
+
+本專案使用 GitHub Actions 自動部署至 Vercel（`.github/workflows/deploy.yml`）。
+
+### 1️⃣ 連結 Vercel 專案
+
+```bash
+npm i -g vercel
+vercel login
+vercel link   # 執行後查看 .vercel/project.json 取得 ID
+```
+
+### 2️⃣ 在 GitHub 設定 Secrets
+
+前往 `Settings → Secrets and variables → Actions`：
+
+| Secret 名稱 | 取得位置 |
+|-------------|----------|
+| `VERCEL_TOKEN` | Vercel → Settings → Tokens |
+| `VERCEL_ORG_ID` | `.vercel/project.json` → `orgId` |
+| `VERCEL_PROJECT_ID` | `.vercel/project.json` → `projectId` |
+
+### 3️⃣ 在 Vercel 設定環境變數
+
+Vercel 專案 → Settings → Environment Variables：
+
+```
+SUPABASE_URL
+SUPABASE_ANON_KEY
+NUXT_SUPABASE_SECRET_KEY
+GEMINI_API_KEY
+```
+
+### 4️⃣ 推送觸發自動部署
+
+```bash
+git push origin main
+# main 分支 → 正式環境
+# Pull Request → 預覽環境（Preview URL）
+```
+
 ---
 
-**最後更新：** 2026 年 4 月 9 日
+**最後更新：** 2026 年 4 月 16 日
 
 # yarn
 yarn build

@@ -48,16 +48,23 @@ export default defineEventHandler(async (event) => {
     const { data: matchedIngredients, error: dbError } = await supabase
       .from('official_ingredients')
       .select('inci_name, limit_standard, warning_text, skin_type_risks')
-      .in('inci_name', inciArray); // 核心：一次性丟入整個陣列進行比對，並取得膚質風險數據
+      .in('inci_name', inciArray);
 
     if (dbError) {
       throw createError({ statusCode: 500, statusMessage: '資料庫比對失敗' });
     }
 
+    // 5b. 查詢 TFDA 官方法規資料庫（cosmetic_regulations）
+    const inciLower = inciArray.map(i => i.toLowerCase());
+    const { data: tfdaMatches } = await supabase
+      .from('cosmetic_regulations')
+      .select('ingredient_name, inci_name, regulation_type, limit_standard, restriction_rules, warning_labels, notes, product_scope')
+      .or(`inci_name.in.(${inciArray.map(i => `"${i}"`).join(',')}),ingredient_name.in.(${inciArray.map(i => `"${i}"`).join(',')})`);
+
     // 6. 雙重過濾分類引擎 -- 法規警告 + 膚質個性化警告
     const regulatoryAlerts: any[] = [];
     const skinTypeAlerts: any[] = [];
-    const flaggedInciNames = new Set<string>(); // 使用 Set 提升性能
+    const flaggedInciNames = new Set<string>();
 
     if (matchedIngredients && matchedIngredients.length > 0) {
       matchedIngredients.forEach((dbIng: any) => {
@@ -67,26 +74,52 @@ export default defineEventHandler(async (event) => {
             inci_name: dbIng.inci_name,
             warning: dbIng.warning_text,
             limit: dbIng.limit_standard,
-            severity: 'critical' // 法規是最高優先級
+            severity: 'critical'
           });
           flaggedInciNames.add(dbIng.inci_name);
         }
 
         // 檢查 B: 膚質個性化警告
         if (skinType) {
-          // 防禦性檢查：確保 skin_type_risks 是物件格式
           if (dbIng.skin_type_risks && typeof dbIng.skin_type_risks === 'object' && !Array.isArray(dbIng.skin_type_risks)) {
             const riskForSkinType = dbIng.skin_type_risks[skinType];
             if (riskForSkinType) {
               skinTypeAlerts.push({
                 inci_name: dbIng.inci_name,
                 risk_description: riskForSkinType,
-                severity: 'warning' // 膚質警告為次級
+                severity: 'warning'
               });
               flaggedInciNames.add(dbIng.inci_name);
             }
           }
         }
+      });
+    }
+
+    // 檢查 TFDA 法規資料庫
+    if (tfdaMatches && tfdaMatches.length > 0) {
+      tfdaMatches.forEach((reg: any) => {
+        const name = reg.inci_name || reg.ingredient_name;
+        if (reg.regulation_type === 'banned') {
+          regulatoryAlerts.push({
+            inci_name: name,
+            warning: `台灣 TFDA 禁用成分${reg.notes ? '：' + reg.notes : ''}`,
+            limit: null,
+            severity: 'critical',
+            source: 'TFDA'
+          });
+        } else {
+          regulatoryAlerts.push({
+            inci_name: name,
+            warning: reg.warning_labels || reg.restriction_rules || null,
+            limit: reg.limit_standard || null,
+            severity: 'warning',
+            source: 'TFDA',
+            regulation_type: reg.regulation_type,
+            product_scope: reg.product_scope
+          });
+        }
+        flaggedInciNames.add(name);
       });
     }
 

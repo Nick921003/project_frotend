@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      cosmetic_regulations: {
+        Row: {
+          id: string
+          ingredient_name: string
+          inci_name: string | null
+          cas_number: string | null
+          aliases: string | null
+          color_index_number: string | null
+          regulation_type: 'banned' | 'restricted' | 'preservative' | 'colorant'
+          product_scope: string | null
+          limit_standard: string | null
+          restriction_rules: string | null
+          warning_labels: string | null
+          notes: string | null
+          source_id: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          ingredient_name: string
+          inci_name?: string | null
+          cas_number?: string | null
+          aliases?: string | null
+          color_index_number?: string | null
+          regulation_type: 'banned' | 'restricted' | 'preservative' | 'colorant'
+          product_scope?: string | null
+          limit_standard?: string | null
+          restriction_rules?: string | null
+          warning_labels?: string | null
+          notes?: string | null
+          source_id?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          ingredient_name?: string
+          inci_name?: string | null
+          cas_number?: string | null
+          aliases?: string | null
+          color_index_number?: string | null
+          regulation_type?: 'banned' | 'restricted' | 'preservative' | 'colorant'
+          product_scope?: string | null
+          limit_standard?: string | null
+          restriction_rules?: string | null
+          warning_labels?: string | null
+          notes?: string | null
+          source_id?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
       official_ingredients: {
         Row: {
           id: string

@@ -44,6 +44,7 @@ export interface CabinetProduct {
   product_category: string;
   raw_ingredients: string; // JSON string
   analysis_result: Record<string, any> | null;
+  overview: string | null;
   created_at: string;
   updated_at: string;
 }

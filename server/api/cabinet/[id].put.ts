@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
 
   // 3. 取得請求體
   const body = await readBody(event);
-  const { product_name, product_category, raw_ingredients } = body;
+  const { product_name, product_category } = body;
   const normalizedCategory = normalizeProductCategory(product_category);
 
   if (!product_name || !product_category) {
@@ -57,8 +57,7 @@ export default defineEventHandler(async (event) => {
     .from('user_cabinet')
     .update({
       product_name,
-      product_category: normalizedCategory,
-      raw_ingredients: raw_ingredients || null
+      product_category: normalizedCategory
     })
     .eq('id', productId)
     .select();

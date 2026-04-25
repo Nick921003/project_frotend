@@ -66,51 +66,16 @@
       </form>
     </div>
 
-    <!-- 保養品庫管理區塊 -->
-    <div
-      style="background: #fef9e7; padding: 2rem; border-radius: 8px; border: 2px solid #f39c12; margin-bottom: 2rem; cursor: pointer;"
-      role="button"
-      tabindex="0"
-      aria-label="前往保養品庫"
-      @click="goCabinet"
-      @keydown.enter.prevent="goCabinet"
-      @keydown.space.prevent="goCabinet"
-    >
-      <h2 style="font-size: 1.2rem; margin-top: 0; color: #d68910;">🧴 保養品庫管理</h2>
-      <p style="color: #666; margin-bottom: 1rem;">管理你的保養品庫存，上傳成分分析，並在每週排程中使用。</p>
-      <router-link to="/cabinet" @click.stop style="display: inline-block; padding: 12px 24px; background-color: #f39c12; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; cursor: pointer; transition: background-color 0.2s;">
-        📋 前往保養品庫 →
-      </router-link>
-    </div>
-
-    <!-- 每週排程區塊 -->
-    <div
-      style="background: #e8f4f8; padding: 2rem; border-radius: 8px; border: 2px solid #3498db; cursor: pointer;"
-      role="button"
-      tabindex="0"
-      aria-label="前往排程規劃"
-      @click="goBeautyPlan"
-      @keydown.enter.prevent="goBeautyPlan"
-      @keydown.space.prevent="goBeautyPlan"
-    >
-      <h2 style="font-size: 1.2rem; margin-top: 0; color: #2c3e50;">📅 每週保養排程</h2>
-      <p style="color: #666; margin-bottom: 1rem;">建立和管理你的個人保養計劃，使用 AI 推薦或手動排列保養品。</p>
-      <router-link to="/beauty-plan" @click.stop style="display: inline-block; padding: 12px 24px; background-color: #3498db; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; cursor: pointer; transition: background-color 0.2s;">
-        📅 前往排程規劃 →
-      </router-link>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 import { useUserProfile } from '~/stores/useUserProfile';
 
 type Gender = 'male' | 'female' | 'other' | '';
 
 const userProfileStore = useUserProfile();
-const router = useRouter();
 
 const formData = ref({
   skinType: '',
@@ -121,14 +86,6 @@ const formData = ref({
 
 const successMessage = ref('');
 const errorMessage = ref('');
-
-const goCabinet = () => {
-  router.push('/cabinet');
-};
-
-const goBeautyPlan = () => {
-  router.push('/beauty-plan');
-};
 
 const fillFormFromStore = () => {
   const profile = userProfileStore.profile;

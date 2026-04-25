@@ -29,7 +29,7 @@
       <div v-else-if="cabinetError" class="error">{{ cabinetError }}</div>
       <div v-else-if="products.length === 0" class="empty-state">
         <p>還沒有添加任何保養品</p>
-        <button @click="$router.push('/cabinet')" class="btn btn-secondary">前往新增保養品</button>
+        <button @click="$router.push('/')" class="btn btn-secondary">前往新增保養品</button>
       </div>
       <table v-else class="products-table">
         <thead>

@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
   console.log('[Cabinet API] 用戶 ID:', userId, '| Email:', user.email);
 
   const body = await readBody(event);
-  const { productName, productCategory, rawIngredients, analysisResult } = body;
+  const { productName, productCategory, rawIngredients, analysisResult, overallSummary } = body;
 
   if (!productName || !rawIngredients) {
     throw createError({ statusCode: 400, statusMessage: '缺少產品名稱或成分分析資料' });
@@ -38,7 +38,8 @@ export default defineEventHandler(async (event) => {
       product_name: productName,
       product_category: normalizedCategory,
       raw_ingredients: rawIngredients,
-      analysis_result: analysisResult
+      analysis_result: analysisResult,
+      overview: overallSummary || null
     } as any)
     .select()
     .single();

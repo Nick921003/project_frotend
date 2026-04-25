@@ -49,10 +49,39 @@
         </select>
       </div>
 
-      <input type="file" accept="image/jpeg, image/png, image/webp" @change="handleImageUpload" :disabled="isLoading" />
-      
-      <div v-if="imageBase64" style="margin-top: 10px;">
-        <img :src="imageBase64" alt="預覽" style="max-height: 150px; border-radius: 4px;" />
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <label
+          style="display: inline-block; padding: 8px 14px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-size: 14px;"
+          :style="isLoading ? 'opacity:0.5;pointer-events:none' : ''"
+        >
+          📷 選擇照片（可多選）
+          <input
+            type="file"
+            accept="image/jpeg, image/png, image/webp"
+            multiple
+            @change="handleImageUpload"
+            :disabled="isLoading"
+            style="display: none;"
+          />
+        </label>
+        <span v-if="imageBase64Array.length > 0" style="font-size: 13px; color: #555;">
+          已選擇 {{ imageBase64Array.length }} 張照片
+        </span>
+      </div>
+
+      <div v-if="imageBase64Array.length > 0" style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 10px;">
+        <div
+          v-for="(src, idx) in imageBase64Array"
+          :key="idx"
+          style="position: relative; display: inline-block;"
+        >
+          <img :src="src" alt="預覽" style="max-height: 120px; border-radius: 4px; display: block;" />
+          <button
+            @click="removeImage(idx)"
+            :disabled="isLoading"
+            style="position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; line-height: 1; padding: 0;"
+          >×</button>
+        </div>
       </div>
 
       <p v-if="fromRoutine" style="margin-top: 10px; font-size: 0.85em; color: #2563eb;">
@@ -61,12 +90,22 @@
     </div>
 
     <!-- 3. 送出按鈕 -->
-    <button 
-      @click="analyzeIngredients" 
-      :disabled="!imageBase64 || isLoading"
+    <button
+      @click="analyzeIngredients"
+      :disabled="imageBase64Array.length === 0 || isLoading"
       style="width: 100%; padding: 12px; background: #000; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer;"
     >
-      {{ isLoading ? '🤖 AI 分析與保存中...' : '開始分析成分並加入保養品櫃' }}
+      {{ isLoading ? '🤖 AI 分析中...' : '開始分析成分' }}
+    </button>
+
+    <!-- 分析完成後的手動儲存按鈕 -->
+    <button
+      v-if="analysisReady && user && !saveMsg"
+      @click="saveToCabinet"
+      :disabled="isSaving"
+      style="width: 100%; margin-top: 10px; padding: 12px; background: #16a34a; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer;"
+    >
+      {{ isSaving ? '💾 儲存中...' : '✅ 加入保養品櫃' }}
     </button>
 
     <div v-if="saveMsg" style="margin-top: 12px; padding: 10px; background: #ecfdf3; color: #166534; border: 1px solid #86efac; border-radius: 6px;">
@@ -89,6 +128,17 @@
           <li v-for="item in result.data.analysis.regulatoryAlerts" :key="item.inci_name" style="margin-bottom: 8px;">
             <strong>{{ item.inci_name }}</strong><br/>
             <span style="font-size: 0.9em; color: #666;">規定：{{ item.warning || item.limit }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 🟠 限量成分區 -->
+      <div v-if="result.data.analysis.limitAlerts?.length > 0" style="margin-bottom: 15px; padding: 15px; background: #fff7e6; border-left: 5px solid #fa8c16; border-radius: 4px;">
+        <h4 style="margin-top: 0; color: #d46b08;">🟠 含限量成分（濃度未知，無法確認是否超標）</h4>
+        <ul style="margin-bottom: 0; padding-left: 20px;">
+          <li v-for="item in result.data.analysis.limitAlerts" :key="item.inci_name" style="margin-bottom: 8px;">
+            <strong>{{ item.inci_name }}</strong><br/>
+            <span style="font-size: 0.9em; color: #666;">法規限量：{{ item.limit }}</span>
           </li>
         </ul>
       </div>
@@ -121,10 +171,6 @@
         <p style="line-height: 1.6; margin-bottom: 0;">{{ result.data.overallSummary }}</p>
       </div>
 
-      <!-- 提示：前往個人資料保管理保養品 -->
-      <div v-if="user" style="margin-top: 20px; padding: 15px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 8px; text-align: center;">
-        <p style="margin: 0; color: #0050b3;">💡 要將此產品加入保養庫？請前往 <router-link to="/profile-setup" style="font-weight: bold; color: #1890ff; text-decoration: none;">個人資料</router-link> 管理您的保養品庫存</p>
-      </div>
     </div>
 
   </div>
@@ -142,11 +188,14 @@ const router = useRouter()
 
 // 狀態管理
 const selectedSkinType = ref('oily') // 訪客預設值
-const imageBase64 = ref(null)
+const imageBase64Array = ref([])
 const isLoading = ref(false)
+const isSaving = ref(false)
 const result = ref(null)
 const errorMsg = ref(null)
 const saveMsg = ref('')
+const analysisReady = ref(false)
+const pendingAnalysisData = ref(null)
 const fromRoutine = ref(false)
 const returnRoutineId = ref('')
 const productName = ref('')
@@ -185,50 +234,79 @@ watchEffect(async () => {
   }
 })
 
-// 處理圖片上傳轉 Base64
+// 處理圖片上傳轉 Base64（支援多張）
 const handleImageUpload = (event) => {
   errorMsg.value = null
-  const file = event.target.files[0]
-  if (!file) return
+  const files = event.target.files
+  if (!files || files.length === 0) return
 
-  if (file.size > 5 * 1024 * 1024) {
-    errorMsg.value = '圖片檔案過大，請上傳小於 5MB 的照片。'
-    return
+  for (const file of files) {
+    if (file.size > 5 * 1024 * 1024) {
+      errorMsg.value = `「${file.name}」過大，請上傳小於 5MB 的照片。`
+      continue
+    }
+    const reader = new FileReader()
+    reader.onload = (e) => { imageBase64Array.value.push(e.target.result) }
+    reader.onerror = () => { errorMsg.value = '圖片讀取失敗，請重試。' }
+    reader.readAsDataURL(file)
   }
-
-  const reader = new FileReader()
-  reader.onload = (e) => { imageBase64.value = e.target.result }
-  reader.onerror = () => { errorMsg.value = '圖片讀取失敗，請重試。' }
-  reader.readAsDataURL(file)
+  event.target.value = ''
 }
 
-// 呼叫 API 進行完整分析
+const removeImage = (idx) => {
+  imageBase64Array.value.splice(idx, 1)
+}
+
+// 呼叫 API 進行成分分析（不自動儲存）
 const analyzeIngredients = async () => {
-  if (!imageBase64.value) return
+  if (imageBase64Array.value.length === 0) return
 
   isLoading.value = true
   result.value = null
   errorMsg.value = null
   saveMsg.value = ''
-  
+  analysisReady.value = false
+  pendingAnalysisData.value = null
+
   try {
     const res = await $fetch('/api/analyze', {
       method: 'POST',
       body: {
-        imageBase64: imageBase64.value,
-        skinType: selectedSkinType.value // 動態傳入使用者選擇的膚質
+        imageBase64Array: imageBase64Array.value,
+        skinType: selectedSkinType.value
       },
       timeout: 60000
     })
-    
+
     result.value = res
-    console.log('✅ 完整工作流測試成功:', res)
+    analysisReady.value = true
+    pendingAnalysisData.value = res
+
+    // 若 AI 辨識到產品名稱且用戶尚未手動填寫，自動帶入
+    if (!productName.value.trim() && res.data?.detectedProductName) {
+      productName.value = res.data.detectedProductName
+    }
 
     if (!user.value) {
       saveMsg.value = '⚠️ 已分析完成。請先登入後再加入保養品櫃。'
-      return
     }
 
+  } catch (error) {
+    console.error('❌ API 請求失敗:', error)
+    errorMsg.value = error.data?.statusMessage || error.message || '發生未知的錯誤'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 使用者手動點選儲存至保養品櫃
+const saveToCabinet = async () => {
+  if (!pendingAnalysisData.value || !user.value) return
+
+  isSaving.value = true
+  const res = pendingAnalysisData.value
+
+  try {
     const finalName = productName.value?.trim() || `未命名產品 ${new Date().toLocaleDateString('zh-TW')}`
     const finalCategory = productCategory.value || '其他'
     const rawIngredients = JSON.stringify(res?.data?.rawAiOutput || [])
@@ -239,29 +317,29 @@ const analyzeIngredients = async () => {
         productName: finalName,
         productCategory: finalCategory,
         rawIngredients,
-        analysisResult: res?.data || null
+        analysisResult: res?.data || null,
+        overallSummary: res?.data?.overallSummary || null
       },
       timeout: 30000
     })
 
     saveMsg.value = '✅ 已加入保養品櫃'
+    analysisReady.value = false
 
     if (fromRoutine.value && returnRoutineId.value) {
       setTimeout(() => {
         router.push({
           path: `/routines/${returnRoutineId.value}`,
-          query: {
-            cabinetUpdated: '1'
-          }
+          query: { cabinetUpdated: '1' }
         })
       }, 600)
     }
 
   } catch (error) {
-    console.error('❌ API 請求失敗:', error)
-    errorMsg.value = error.data?.statusMessage || error.message || '發生未知的錯誤'
+    console.error('❌ 儲存失敗:', error)
+    errorMsg.value = error.data?.statusMessage || error.message || '儲存失敗，請重試'
   } finally {
-    isLoading.value = false
+    isSaving.value = false
   }
 }
 

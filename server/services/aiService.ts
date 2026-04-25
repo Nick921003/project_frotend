@@ -343,57 +343,68 @@ ${skinIssues.join(', ')}
   }
 
   /**
-   * 進行圖像 OCR 成分辨識（提取 INCI 陣列）
-   * 用於 analyze.post.ts 的圖像成分提取
+   * 進行圖像 OCR 成分辨識（提取產品名稱 + INCI 陣列）
+   * 支援單張或多張照片（同一產品不同角度）
    */
   async extractIngredientsFromImage(
-    imageBase64: string
-  ): Promise<string[]> {
+    imageBase64: string | string[]
+  ): Promise<{ productName: string | null; ingredients: string[] }> {
+    const images = Array.isArray(imageBase64) ? imageBase64 : [imageBase64];
     try {
       const { GoogleGenerativeAI, SchemaType } = await import('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(this.config.apiKey);
-      
+
       const model = genAI.getGenerativeModel({
         model: this.config.model,
         systemInstruction: `你是一位國際頂尖的化妝品配方師與影像辨識專家。
-你的唯一任務是：辨識使用者上傳的保養品成分表照片，提取所有成分，並將其正規化。
+你的任務是：辨識使用者上傳的保養品照片，提取產品名稱與所有成分。
 嚴格規則：
-1. 將所有語言（包含中文、日文、韓文）、俗名或錯別字，強制精確翻譯為標準的「INCI Name (國際化妝品原料命名)」，全英文。
-2. 忽略標點符號、濃度百分比、用途說明等非成分資訊。
-3. 你的輸出必須是一個純粹的字串陣列 (JSON Array)。
-4. 絕對不可包含任何解釋、問候語、Markdown 標記 (如 \`\`\`json) 或其他廢話。`,
+1. productName：從標籤或外包裝找出最完整的產品名稱（可含品牌名）。若找不到則回傳 null。
+2. ingredients：將所有語言（包含中文、日文、韓文）、俗名或錯別字，強制精確翻譯為標準的「INCI Name (國際化妝品原料命名)」，全英文。
+3. 忽略標點符號、濃度百分比、用途說明等非成分資訊。
+4. 若有多張照片，請合併所有照片的成分，去除重複後回傳。
+5. 絕對不可包含任何解釋、問候語、Markdown 標記 (如 \`\`\`json) 或其他廢話。`,
         generationConfig: {
-          temperature: 0.1, // 降低隨機性，提高翻譯與格式穩定性
+          temperature: 0.1,
           responseMimeType: "application/json",
-          // 強制鎖死輸出格式為 Array of Strings
           responseSchema: {
-            type: SchemaType.ARRAY,
-            items: {
-              type: SchemaType.STRING,
+            type: SchemaType.OBJECT,
+            properties: {
+              productName: { type: SchemaType.STRING, nullable: true },
+              ingredients: {
+                type: SchemaType.ARRAY,
+                items: { type: SchemaType.STRING },
+              },
             },
+            required: ['ingredients'],
           },
         },
       });
 
-      const result = await model.generateContent([
-        {
-          inlineData: {
-            data: imageBase64,
-            mimeType: "image/jpeg",
-          },
+      const imageParts = images.map(b64 => ({
+        inlineData: {
+          data: b64,
+          mimeType: "image/jpeg" as const,
         },
-        "請萃取圖片中的成分，並依照指示回傳 INCI Array。"
-      ]);
+      }));
+
+      const prompt = images.length > 1
+        ? "這些照片是同一個產品的不同角度（正面標籤、成分表、宣傳說明等）。請辨識產品名稱，並萃取所有照片中出現的成分，合併去重後，依照指示回傳 JSON。"
+        : "請辨識產品名稱，並萃取圖片中的成分，依照指示回傳 JSON。";
+
+      const result = await model.generateContent([...imageParts, prompt]);
 
       const responseText = result.response.text();
-      const inciArray: string[] = JSON.parse(responseText);
+      const parsed = JSON.parse(responseText);
+      const ingredients: string[] = parsed.ingredients || [];
+      const productName: string | null = parsed.productName || null;
 
-      if (!Array.isArray(inciArray) || inciArray.length === 0) {
+      if (!Array.isArray(ingredients) || ingredients.length === 0) {
         throw new Error("AI 無法從圖片中辨識出任何有效成分");
       }
 
-      console.log('[AIService] 從圖像提取成分，共', inciArray.length, '個');
-      return inciArray;
+      console.log(`[AIService] 從 ${images.length} 張圖像提取成分，共 ${ingredients.length} 個，產品名稱：${productName ?? '未辨識'}`);
+      return { productName, ingredients };
     } catch (error: any) {
       console.error('[AIService] 圖像分析錯誤:', error.message);
       throw new Error(`圖像成分提取失敗: ${error.message}`);

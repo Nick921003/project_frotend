@@ -232,81 +232,95 @@
           </div>
 
           <div class="days-grid">
-            <div v-for="(dayName, dayIdx) in daysOfWeek" :key="dayIdx" class="day-column">
-              <div class="day-header">
-                <h3>{{ dayName }}</h3>
+            <div
+              v-for="(dayName, dayIdx) in daysOfWeek"
+              :key="dayIdx"
+              class="day-column"
+              :class="{ 'day-expanded': dayIdx === expandedDayIdx, 'day-collapsed': dayIdx !== expandedDayIdx }"
+            >
+              <div
+                class="day-header"
+                @click="expandedDayIdx = dayIdx"
+                style="cursor: pointer;"
+              >
+                <h3>{{ dayIdx === expandedDayIdx ? `週${dayName}` : dayName }}</h3>
+                <span v-if="dayIdx !== expandedDayIdx" class="day-item-count">
+                  {{ getMorningItems(dayIdx).length + getEveningItems(dayIdx).length }}
+                </span>
               </div>
 
-              <!-- 早晨排程 -->
-              <div class="time-slot morning">
-                <div class="time-label">🌅 早晨</div>
-                <div
-                  class="drop-zone"
-                  @dragover.prevent
-                  @drop="onProductDrop($event, dayIdx, 'morning')"
-                >
+              <div class="day-content">
+                <!-- 早晨排程 -->
+                <div class="time-slot morning">
+                  <div class="time-label">🌅 早晨</div>
                   <div
-                    v-for="(item, idx) in getMorningItems(dayIdx)"
-                    :key="item.id || `${dayIdx}-morning-${idx}`"
-                    class="scheduled-item"
-                    :class="{ 'is-recommendation': item.is_recommendation, 'is-locked': item.is_locked }"
-                    :draggable="!item.is_locked"
-                    @dragstart="onProductDragStart($event, item, dayIdx, 'morning')"
+                    class="drop-zone"
+                    @dragover.prevent
+                    @drop="dayIdx === expandedDayIdx && onProductDrop($event, dayIdx, 'morning')"
                   >
-                    <div class="item-content">
-                      <span class="index">{{ idx + 1 }}</span>
-                      <span class="name">{{ item.product_name }}</span>
+                    <div
+                      v-for="(item, idx) in getMorningItems(dayIdx)"
+                      :key="item.id || `${dayIdx}-morning-${idx}`"
+                      class="scheduled-item"
+                      :class="{ 'is-recommendation': item.is_recommendation, 'is-locked': item.is_locked }"
+                      :draggable="!item.is_locked && dayIdx === expandedDayIdx"
+                      @dragstart="onProductDragStart($event, item, dayIdx, 'morning')"
+                    >
+                      <div class="item-content">
+                        <span class="index">{{ idx + 1 }}</span>
+                        <span class="name">{{ item.product_name }}</span>
+                      </div>
+                      <button
+                        @click="toggleItemLock(item)"
+                        class="btn-lock"
+                        :title="item.is_locked ? '解鎖（AI 可調整）' : '鎖定（AI 不會移動/刪除）'"
+                      >
+                        {{ item.is_locked ? '🔒' : '🔓' }}
+                      </button>
+                      <button
+                        @click="removeItem(dayIdx, 'morning', item.product_name)"
+                        class="btn-remove"
+                      >
+                        ×
+                      </button>
                     </div>
-                    <button
-                      @click="toggleItemLock(item)"
-                      class="btn-lock"
-                      :title="item.is_locked ? '解鎖（AI 可調整）' : '鎖定（AI 不會移動/刪除）'"
-                    >
-                      {{ item.is_locked ? '🔒' : '🔓' }}
-                    </button>
-                    <button
-                      @click="removeItem(dayIdx, 'morning', item.product_name)"
-                      class="btn-remove"
-                    >
-                      ×
-                    </button>
                   </div>
                 </div>
-              </div>
 
-              <!-- 晚間排程 -->
-              <div class="time-slot evening">
-                <div class="time-label">🌙 晚間</div>
-                <div
-                  class="drop-zone"
-                  @dragover.prevent
-                  @drop="onProductDrop($event, dayIdx, 'evening')"
-                >
+                <!-- 晚間排程 -->
+                <div class="time-slot evening">
+                  <div class="time-label">🌙 晚間</div>
                   <div
-                    v-for="(item, idx) in getEveningItems(dayIdx)"
-                    :key="item.id || `${dayIdx}-evening-${idx}`"
-                    class="scheduled-item"
-                    :class="{ 'is-recommendation': item.is_recommendation, 'is-locked': item.is_locked }"
-                    :draggable="!item.is_locked"
-                    @dragstart="onProductDragStart($event, item, dayIdx, 'evening')"
+                    class="drop-zone"
+                    @dragover.prevent
+                    @drop="dayIdx === expandedDayIdx && onProductDrop($event, dayIdx, 'evening')"
                   >
-                    <div class="item-content">
-                      <span class="index">{{ idx + 1 }}</span>
-                      <span class="name">{{ item.product_name }}</span>
+                    <div
+                      v-for="(item, idx) in getEveningItems(dayIdx)"
+                      :key="item.id || `${dayIdx}-evening-${idx}`"
+                      class="scheduled-item"
+                      :class="{ 'is-recommendation': item.is_recommendation, 'is-locked': item.is_locked }"
+                      :draggable="!item.is_locked && dayIdx === expandedDayIdx"
+                      @dragstart="onProductDragStart($event, item, dayIdx, 'evening')"
+                    >
+                      <div class="item-content">
+                        <span class="index">{{ idx + 1 }}</span>
+                        <span class="name">{{ item.product_name }}</span>
+                      </div>
+                      <button
+                        @click="toggleItemLock(item)"
+                        class="btn-lock"
+                        :title="item.is_locked ? '解鎖（AI 可調整）' : '鎖定（AI 不會移動/刪除）'"
+                      >
+                        {{ item.is_locked ? '🔒' : '🔓' }}
+                      </button>
+                      <button
+                        @click="removeItem(dayIdx, 'evening', item.product_name)"
+                        class="btn-remove"
+                      >
+                        ×
+                      </button>
                     </div>
-                    <button
-                      @click="toggleItemLock(item)"
-                      class="btn-lock"
-                      :title="item.is_locked ? '解鎖（AI 可調整）' : '鎖定（AI 不會移動/刪除）'"
-                    >
-                      {{ item.is_locked ? '🔒' : '🔓' }}
-                    </button>
-                    <button
-                      @click="removeItem(dayIdx, 'evening', item.product_name)"
-                      class="btn-remove"
-                    >
-                      ×
-                    </button>
                   </div>
                 </div>
               </div>
@@ -365,7 +379,10 @@ const showThemeEditor = ref(false);
 const showRecommendations = ref(true);
 const aiSuggestedItems = ref<RoutineItem[]>([]);
 
-const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const daysOfWeek = ['日', '一', '二', '三', '四', '五', '六'];
+
+// 手風琴展開：預設展開今天（0=週日），其餘收合
+const expandedDayIdx = ref(new Date().getDay());
 
 // ==================
 // 可拖拽的產品列表（保養品庫存）
@@ -1988,11 +2005,12 @@ onMounted(async () => {
   font-size: 0.95rem;
 }
 
-/* 右側面板：每日排程 */
+/* 右側面板：每日排程 - 手風琴 */
 .days-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+  min-height: 300px;
 }
 
 .day-column {
@@ -2000,6 +2018,27 @@ onMounted(async () => {
   border-radius: 8px;
   overflow: hidden;
   background: #f8f9fa;
+  transition: flex 0.3s ease;
+  min-width: 0;
+}
+
+.day-expanded {
+  flex: 4;
+  border-color: #3498db;
+}
+
+.day-collapsed {
+  flex: 0.6;
+  cursor: pointer;
+}
+
+.day-collapsed:hover {
+  border-color: #95a5a6;
+  background: #f0f2f4;
+}
+
+.day-collapsed .day-content {
+  display: none;
 }
 
 .day-header {
@@ -2007,11 +2046,39 @@ onMounted(async () => {
   color: white;
   padding: 0.75rem;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+
+.day-expanded .day-header {
+  background: #2980b9;
 }
 
 .day-header h3 {
   margin: 0;
   font-size: 1rem;
+  white-space: nowrap;
+}
+
+.day-collapsed .day-header h3 {
+  writing-mode: vertical-rl;
+  font-size: 0.85rem;
+  padding: 0.5rem 0;
+}
+
+.day-item-count {
+  background: rgba(255,255,255,0.25);
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.day-content {
+  padding: 0.5rem;
 }
 
 .time-slot {
@@ -2107,10 +2174,8 @@ onMounted(async () => {
 
 .item-content .name {
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: #2c3e50;
+  word-break: break-word;
 }
 
 .btn-remove {
@@ -2198,7 +2263,7 @@ onMounted(async () => {
   }
 
   .days-grid {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.25rem;
   }
 }
 
@@ -2225,11 +2290,11 @@ onMounted(async () => {
   }
 
   .days-grid {
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.2rem;
   }
 
   .day-header h3 {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
 
   .time-label {

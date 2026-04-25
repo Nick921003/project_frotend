@@ -1,0 +1,330 @@
+編號,Color_Index_Number／成分名,別名,使用範圍,限制規定,備註
+1,CI 10006,Pigment Green 8,4,,
+2,CI 10020,"Acid Green 1
+Ext. D&C Green No. 1
+Naphthol Green B",3,不得使用於染髮用途化粧品。,
+3,CI 10316,"Acid Yellow 1
+Ext. D&C Yellow No. 7
+Naphthol Yellow S",2,,
+4,CI 11680,"Pigment Yellow 1
+Ext. D&C Yellow No. 5
+Hansa Yellow G",3,,
+5,CI 11710,Pigment Yellow 3,3,,
+6,CI 11725,"Pigment Orange 1
+Hansa Yellow 3R",4,,
+7,CI 11920,Food Orange 3,1,不得使用於染髮用途化粧品。,
+8,CI 12010,Solvent Red 3,3,不得使用於染髮用途化粧品。,
+9,CI 12085,"Pigment Red 4
+D&C Red No. 36
+Permanent Red",1,"1. 限量：3%
+2.不得使用於染髮用途化粧品。",
+10,CI 12120,"Pigment Red 3
+D&C Red No. 35
+Toluidine Red",4,,
+11,CI 12370,Pigment Red 112,4,不得使用於染髮用途化粧品。,
+12,CI 12420,Pigment Red 7,4,,
+13,CI 12480,Pigment Brown 1,4,,
+14,CI 12490,Pigment Red 5,1,不得使用於染髮用途化粧品。,
+15,CI 12700,Disperse Yellow 16,4,,
+16,CI 13015,"Acid Yellow 9
+Food Yellow 2
+Fast Yellow",1,,
+17,CI 14270,Acid Orange 6,1,不得使用於染髮用途化粧品。,
+18,CI 14700,"Food Red 1
+FD&C Red No. 4
+Ponceau SX",1,不得使用於染髮用途化粧品。,
+19,CI 14720,"Acid Red 14
+Food Red 3
+Azorubin",1,,
+20,CI 14815,Food Red 2,1,,
+21,CI 15510,"Acid Orange 7
+D&C Orange No. 4
+Orange II",2,,
+22,CI 15525,Pigment Red 68,1,,
+23,CI 15580,Pigment Red 51,1,,
+24,CI 15620,"Acid Red 88
+Ext. D&C Red No. 8
+Fast Red S",4,,
+25,CI 15630,"Pigment Red 49
+D&C Red No. 10
+Lithol Red Na
+Pigment Red 49:1
+D&C Red No. 12
+Lithol Red Ba
+Pigment Red 49:2
+D&C Red No. 11
+Lithol Red Ca
+Pigment Red 49:3
+D&C Red No. 13
+Lithol Red Sr",1,限量：3%,
+26,CI 15800,"Pigment Red 64
+Pigment Red 64:1
+D&C Red No. 31
+Brilliant Lake Red R",3,不得使用於染髮用途化粧品。,
+27,CI 15850,"Pigment Red 57
+D&C Red No. 6
+Lithol Rubine B
+Pigment Red 57:1
+D&C Red No. 7
+Lithol Rubine B Ca",1,,
+28,CI 15865,"Pigment Red 48
+Permanent Red F5R",1,不得使用於染髮用途化粧品。,
+29,CI 15880,"Pigment Red 63
+Pigment Red 63:1
+D&C Red No. 34
+Deep Maroon",1,不得使用於染髮用途化粧品。,
+30,CI 15980,Food Orange 2,1,,
+31,CI 15985,"Food Yellow 3
+FD&C Yellow No. 6
+Sunset Yellow FCF",1,,
+32,CI 16035,"Food Red 17
+FD&C Red No. 40
+Allura Red Ac",1,,
+33,CI 16185,"Food Red 9
+Acid Red 27",1,不得使用於染髮用途化粧品。,
+34,CI 16230,Acid Orange 10,3,,
+35,CI 16255,"Acid Red 18
+Food Red 7
+New Coccine",1,,
+36,CI 16290,Food Red 8,1,,
+37,CI 17200,"Acid Red 33
+D&C Red No. 33
+Fast Acid Magenta
+Food Red 12",1,,
+38,CI 18050,"Acid Red 1
+Food Red 10
+Fast Crimson 1",3,,
+39,CI 18130,Acid Red 155,4,,
+40,CI 18690,Acid Yellow 121,4,,
+41,CI 18736,Acid Red 180,4,,
+42,CI 18820,"Acid Yellow 11
+Ext. D&C Yellow No. 3
+Fast Light Yellow 3G",4,,
+43,CI 18965,Food Yellow 5,1,,
+44,CI 19140,"Acid Yellow 23
+FD&C Yellow No. 5
+Tartrazine
+Food Yellow 4",1,,
+45,CI 20040,Pigment Yellow 16,4,,
+46,CI 20470,"Acid Black 1
+Solvent Brown 12
+Naphthol Blue Black",4,,
+47,CI 21100,Pigment Yellow 13,4,不得使用於染髮用途化粧品。,
+48,CI 21108,Pigment Yellow 83,4,,
+49,CI 21230,Solvent Yellow 29,3,不得使用於染髮用途化粧品。,
+50,CI 24790,Acid Red 163,4,,
+51,CI 26100,"Solvent Red 23
+D&C Red No. 17
+Sudan III",3,不得使用於染髮用途化粧品。,
+52,CI 27755,Food Black 2,1,不得使用於染髮用途化粧品。,
+53,CI 28440,Food Black 1,1,,
+54,CI 40215,Direct Orange 39,4,,
+55,CI 40800,"beta, beta-Carotene
+Food Orange 5",1,,
+56,CI 40820,Food Orange 6,1,,
+57,CI 40825,Food Orange 7,1,,
+58,CI 40850,Food Orange 8,1,,
+59,CI 42045,Acid Blue 1,3,不得使用於染髮用途化粧品。,
+60,CI 42051,Food Blue 5,1,不得使用於染髮用途化粧品。,
+61,CI 42053,"Food Green 3
+FD&C Green No. 3
+Fast Green FCF",1,不得使用於染髮用途化粧品。,
+62,CI 42080,Acid Blue 7,4,,
+63,CI 42090,"Food Blue 2
+FD&C Blue No. 1
+Brilliant Blue FCF
+Acid Blue 9
+D&C Blue No. 4
+Alphazurine FG",1,,
+64,CI 42100,Acid Green 9,4,,
+65,CI 42170,Acid Green 22,4,,
+66,CI 42520,Basic Violet 2,4,限量：5 ppm,
+67,CI 42735,Acid Blue 104,3,,
+68,CI 44090,Food Green 4,1,,
+69,CI 45100,"Acid Red 52
+Acid Red",4,,
+70,CI 45190,"Acid Violet 9
+Ext. D&C Red No. 3
+Violamine R",4,不得使用於染髮用途化粧品。,
+71,CI 45220,Acid Red 50,4,,
+72,CI 45350,"Acid Yellow 73
+D&C Yellow No. 8
+Uranine
+D&C Yellow No. 9
+Uranine K
+D&C Yellow No. 7
+Fluorescein",1,"1.限量：6%
+2.不得使用於染髮用途化粧品。",
+73,CI 45370,"Acid Orange 11
+Solvent Red 72
+D&C Orange No. 5
+Dibromofluorescein
+
+
+",1,不得使用於染髮用途化粧品。,
+74,CI 45380,"Acid Red 87
+D&C Red No. 22
+Eosine YS
+D&C Red No. 23
+Eosine YSK
+Solvent Red 43
+D&C Red No. 21
+Tetrabromo Fluorescein",1,不得使用於染髮用途化粧品。,
+75,CI 45396,Solvent Orange 16,1,用於唇用化粧品：限量1%，且限用游離酸態。,
+76,CI 45405,Acid Red 98,2,,
+77,CI 45410,"Acid Red 92
+D&C Red No. 28
+Phloxine BK
+Phloxine B
+Solvent Red 48
+D&C Red No. 27
+Tetrachloro tetrabromofluorecein",1,,
+78,CI 45430,"Acid Red 51
+FD&C Red No. 3
+Erythrosine
+Food Red 14",1,不得使用於染髮用途化粧品。,
+79,CI 47000,"Solvent Yellow 33
+D&C Yellow No. 11
+Quinoline Yellow SS",3,不得使用於染髮用途化粧品。,
+80,CI 47005,"Acid Yellow 3
+D&C Yellow No. 10
+Quinoline Yellow WS",1,,
+81,CI 50325,Acid Violet 50,4,,
+82,CI 50420,Acid Black 2,3,不得使用於染髮用途化粧品。,
+83,CI 51319,Pigment Violet 23,4,不得使用於染髮用途化粧品。,
+84,CI 58000,Pigment Red 83,1,不得使用於染髮用途化粧品。,
+85,CI 59040,"Solvent Green 7
+D&C Green No. 8
+Pyranin Conc",3,不得使用於染髮用途化粧品。,
+86,CI 60724,Disperse Violet 27,4,,
+87,CI 60725,"Solvent Violet 13
+D&C Violet No. 2
+Alizarine Purple SS",1,不得使用於染髮用途化粧品。,
+88,CI 60730,"Acid Violet 43
+Ext. D&C Violet No. 2
+Alizarine Violet NR",3,,
+89,CI 61565,"Solvent Green 3
+D&C Green No. 6
+Quinizarine Green SS",1,不得使用於染髮用途化粧品。,
+90,CI 61570,"Acid Green 25
+D&C Green No. 5
+Alizarine Cyanine Green",1,,
+91,CI 61585,Acid Blue 80,4,,
+92,CI 62045,Acid Blue 62,4,,
+93,CI 69800,Food Blue 4,1,,
+94,CI 69825,"Pigment Blue 64
+D&C Blue No. 9
+Carbanthrene Blue",1,,
+95,CI 71105,Vat Orange 7,3,,
+96,CI 73000,"Pigment Blue 66
+D&C Blue No. 6
+Indigo",1,,
+97,CI 73015,"Acid Blue 74
+FD&C Blue No. 2
+Indigo Carmine",1,,
+98,CI 73360,"D&C Red No. 30
+Vat Red 1
+Helindone Pink CN",1,不得使用於染髮用途化粧品。,
+99,CI 73385,Vat Violet 2,1,,
+100,CI 73900,Pigment Violet 19,4,不得使用於染髮用途化粧品。,
+101,CI 73915,Pigment Red 122,4,,
+102,CI 74100,Pigment Blue 16,4,,
+103,CI 74160,"Pigment Blue 15
+Phthalocyanine Blue",1,不得使用於染髮用途化粧品。,
+104,CI 74180,Direct Blue 86,4,不得使用於染髮用途化粧品。,
+105,CI 74260,"Pigment Green 7
+Phthalocyanine Green",2,不得使用於染髮用途化粧品。,
+106,CI 75100,"Natural Yellow 6
+Crocetine",1,,
+107,CI 75120,"Natural Orange 4
+Annatto",1,,
+108,CI 75125,"Natural Yellow 27
+Lycopene",1,,
+109,CI 75130,"Natural Yellow 26
+Beta-Carotene",1,,
+110,CI 75135,Rubixanthin,1,,
+111,CI 75170,"Natural White 1
+Guanine",1,,
+112,CI 75300,"Natural Yellow 3
+Curcumin",1,,
+113,CI 75470,"Natural Red 4
+Carmine",1,,
+114,CI 75810,"Natural Green 3
+Sodium Copper Chlorophyllin
+Chlorophyllin-Copper Complex",1,,
+115,CI 77000,"Aluminum Powder
+Pigment Metal 1",1,,
+116,CI 77002,Pigment White,1,,
+117,CI 77004,"Pigment White 19
+Kaolin
+Bentonite",1,,
+118,CI 77007,"Pigment Blue 29
+Ultramarine Blue",1,,
+119,CI 77015,"Pigment Red 101
+Pigment Red 102
+Aluminum silicate coloured with ferric oxide",1,,
+120,CI 77019,"Pigment White 20
+Mica",1,,
+121,CI 77120,Pigment White 21,1,,
+122,CI 77163,"Pigment White 14
+Bismuth Oxychloride",1,,
+123,CI 77220,"Pigment White 18
+Calcium Carbonate",1,,
+124,CI 77231,"Pigment White 25
+Calcium Sulfate",1,,
+125,CI 77266,"Pigment Black 6
+Carbon Black",1,"屬奈米等級者：
+1.粒徑≧20 nm
+2.限量：10%
+3.不得使用於可能吸入肺部之產品。
+
+
+
+
+",
+126,CI 77267,"Pigment Black 9
+Charcoal, bone",1,,
+127,CI 77268:1,"Food Black 3
+Coke Black",1,,
+128,CI 77288,"Pigment Green 17
+Chromium Oxide",1,,
+129,CI 77289,"Pigment Green 18
+Chromium Hydroxide",1,,
+130,CI 77346,"Pigment Blue 28
+Cobalt Aluminum Oxide",1,,
+131,CI 77400,"Pigment Metal 2
+Bronze Powder
+Copper Powder",1,,
+132,CI 77480,"Pigment Metal 3
+Gold Leaf",1,,
+133,CI 77489,"Ferrous Oxide
+Iron Oxides",1,,
+134,CI 77491,"Pigment Red 101
+Red Iron Oxide",1,,
+135,CI 77492,"Pigment Yellow 11
+Yellow Iron Oxide",1,,
+136,CI 77499,"Pigment Black 11
+Black Iron Oxide",1,,
+137,CI 77510,"Pigment Blue 27
+Ferric Ferrocyanide",1,,
+138,CI 77713,"Pigment White 18
+Magnesium Carbonate",1,,
+139,CI 77742,"Pigment Violet 16
+Manganese Violet",1,,
+140,CI 77745,Manganese Phosphate,1,,
+141,CI 77820,Silver,1,,
+142,CI 77891(3),"Pigment White 6
+Titanium dioxide",1,,該成分作為非色素用途時，應適用化粧品成分使用限制表之規定。
+143,CI 77947(4),Zinc oxide,1,不得使用於可能吸入肺部之產品。,該成分作為非色素用途時，應適用特定用途化粧品成分名稱及使用限制表之規定。
+144,Lactoflavin,Riboflavin,1,,
+145,Caramel,Natural Brown 10,1,,
+146,"Capsanthin, capsorubin",,1,,
+147,Beetroot red,,1,,
+148,Anthocyanins,,1,,
+149,"Aluminum stearate/
+Zinc stearate/
+Magnesium stearate/
+Calcium stearate",,1,,
+150,Bromothymol blue,,4,,
+151,Bromocresol green,,4,,
+152,Acid red 195,,3,,

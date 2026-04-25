@@ -15,32 +15,42 @@ export default defineEventHandler(async (event) => {
 
   try {
     const body = await readBody(event);
-    const { imageBase64, skinType } = body;
+    const { imageBase64, imageBase64Array, skinType } = body;
 
-    if (!imageBase64) {
-      throw createError({ statusCode: 400, statusMessage: '缺少必要參數：imageBase64' });
+    // 支援單張（imageBase64）或多張（imageBase64Array）
+    const rawImages: string[] = imageBase64Array
+      ? (Array.isArray(imageBase64Array) ? imageBase64Array : [imageBase64Array])
+      : imageBase64
+        ? [imageBase64]
+        : [];
+
+    if (rawImages.length === 0) {
+      throw createError({ statusCode: 400, statusMessage: '缺少必要參數：imageBase64 或 imageBase64Array' });
     }
 
     // 驗證膚質類型（非必須，但若提供則必須有效）
     if (skinType && !VALID_SKIN_TYPES.includes(skinType)) {
-      throw createError({ 
-        statusCode: 400, 
-        statusMessage: `無效的膚質類型。有效值：${VALID_SKIN_TYPES.join(', ')}` 
+      throw createError({
+        statusCode: 400,
+        statusMessage: `無效的膚質類型。有效值：${VALID_SKIN_TYPES.join(', ')}`
       });
     }
 
     // 1. 清洗 Base64 (去除可能來自前端的 data:image/jpeg;base64, 前綴)
-    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+    const base64DataArray = rawImages.map(img => img.replace(/^data:image\/\w+;base64,/, ""));
 
-    // 2. 使用 AIService 進行圖像分析
+    // 2. 使用 AIService 進行圖像分析（支援多張）
     let inciArray: string[];
+    let detectedProductName: string | null = null;
     try {
-      console.log('[Analyze API] 使用 AIService 提取圖像成分');
-      inciArray = await aiService.extractIngredientsFromImage(base64Data);
+      console.log(`[Analyze API] 使用 AIService 提取圖像成分，共 ${base64DataArray.length} 張`);
+      const extracted = await aiService.extractIngredientsFromImage(base64DataArray);
+      inciArray = extracted.ingredients;
+      detectedProductName = extracted.productName;
     } catch (extractError: any) {
-      throw createError({ 
-        statusCode: 500, 
-        statusMessage: 'AI 圖像分析失敗: ' + extractError.message 
+      throw createError({
+        statusCode: 500,
+        statusMessage: 'AI 圖像分析失敗: ' + extractError.message
       });
     }
 
@@ -61,15 +71,16 @@ export default defineEventHandler(async (event) => {
       .select('ingredient_name, inci_name, regulation_type, limit_standard, restriction_rules, warning_labels, notes, product_scope')
       .or(`inci_name.in.(${inciArray.map(i => `"${i}"`).join(',')}),ingredient_name.in.(${inciArray.map(i => `"${i}"`).join(',')})`);
 
-    // 6. 雙重過濾分類引擎 -- 法規警告 + 膚質個性化警告
+    // 6. 雙重過濾分類引擎 -- 法規警告 + 限量成分 + 膚質個性化警告
     const regulatoryAlerts: any[] = [];
+    const limitAlerts: any[] = [];
     const skinTypeAlerts: any[] = [];
     const flaggedInciNames = new Set<string>();
 
     if (matchedIngredients && matchedIngredients.length > 0) {
       matchedIngredients.forEach((dbIng: any) => {
-        // 檢查 A: 法規警告 (必絕/限量)
-        if (dbIng.warning_text || dbIng.limit_standard) {
+        // 檢查 A1: 強制警語/禁用 → 紅燈
+        if (dbIng.warning_text) {
           regulatoryAlerts.push({
             inci_name: dbIng.inci_name,
             warning: dbIng.warning_text,
@@ -77,20 +88,26 @@ export default defineEventHandler(async (event) => {
             severity: 'critical'
           });
           flaggedInciNames.add(dbIng.inci_name);
+        } else if (dbIng.limit_standard) {
+          // 檢查 A2: 有限量規定但濃度未知 → 黃燈
+          limitAlerts.push({
+            inci_name: dbIng.inci_name,
+            limit: dbIng.limit_standard,
+            severity: 'warning'
+          });
+          flaggedInciNames.add(dbIng.inci_name);
         }
 
         // 檢查 B: 膚質個性化警告
-        if (skinType) {
-          if (dbIng.skin_type_risks && typeof dbIng.skin_type_risks === 'object' && !Array.isArray(dbIng.skin_type_risks)) {
-            const riskForSkinType = dbIng.skin_type_risks[skinType];
-            if (riskForSkinType) {
-              skinTypeAlerts.push({
-                inci_name: dbIng.inci_name,
-                risk_description: riskForSkinType,
-                severity: 'warning'
-              });
-              flaggedInciNames.add(dbIng.inci_name);
-            }
+        if (skinType && dbIng.skin_type_risks && typeof dbIng.skin_type_risks === 'object' && !Array.isArray(dbIng.skin_type_risks)) {
+          const riskForSkinType = dbIng.skin_type_risks[skinType];
+          if (riskForSkinType) {
+            skinTypeAlerts.push({
+              inci_name: dbIng.inci_name,
+              risk_description: riskForSkinType,
+              severity: 'warning'
+            });
+            flaggedInciNames.add(dbIng.inci_name);
           }
         }
       });
@@ -109,15 +126,27 @@ export default defineEventHandler(async (event) => {
             source: 'TFDA'
           });
         } else {
-          regulatoryAlerts.push({
-            inci_name: name,
-            warning: reg.warning_labels || reg.restriction_rules || null,
-            limit: reg.limit_standard || null,
-            severity: 'warning',
-            source: 'TFDA',
-            regulation_type: reg.regulation_type,
-            product_scope: reg.product_scope
-          });
+          const hasWarningText = !!(reg.warning_labels || reg.restriction_rules);
+          if (hasWarningText) {
+            regulatoryAlerts.push({
+              inci_name: name,
+              warning: reg.warning_labels || reg.restriction_rules,
+              limit: reg.limit_standard || null,
+              severity: 'critical',
+              source: 'TFDA',
+              regulation_type: reg.regulation_type,
+              product_scope: reg.product_scope
+            });
+          } else {
+            limitAlerts.push({
+              inci_name: name,
+              limit: reg.limit_standard || null,
+              severity: 'warning',
+              source: 'TFDA',
+              regulation_type: reg.regulation_type,
+              product_scope: reg.product_scope
+            });
+          }
         }
         flaggedInciNames.add(name);
       });
@@ -142,13 +171,14 @@ export default defineEventHandler(async (event) => {
       message: '雙引擎分析完成',
       data: {
         rawAiOutput: inciArray,
+        detectedProductName,
         analysis: {
-          regulatoryAlerts, // DB 處理：法規紅燈
-          skinTypeAlerts,   // DB 處理：膚質黃燈
+          regulatoryAlerts,  // DB 處理：法規紅燈（強制警語/禁用）
+          limitAlerts,       // DB 處理：限量成分黃燈（濃度未知）
+          skinTypeAlerts,    // DB 處理：膚質黃燈
           safeList: safeOrUnknownIngredients // DB 未匹配到的成分
         },
-        // AI 綜合評估欄位
-        overallSummary: aiSummary 
+        overallSummary: aiSummary
       }
     };
 

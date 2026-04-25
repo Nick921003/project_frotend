@@ -256,6 +256,7 @@ export type Database = {
           analysis_result: Json | null
           created_at: string | null
           id: string
+          overview: string | null
           product_category: string | null
           product_name: string
           raw_ingredients: Json
@@ -265,6 +266,7 @@ export type Database = {
           analysis_result?: Json | null
           created_at?: string | null
           id?: string
+          overview?: string | null
           product_category?: string | null
           product_name: string
           raw_ingredients: Json
@@ -274,6 +276,7 @@ export type Database = {
           analysis_result?: Json | null
           created_at?: string | null
           id?: string
+          overview?: string | null
           product_category?: string | null
           product_name?: string
           raw_ingredients?: Json

@@ -1,5 +1,7 @@
 export default defineNuxtConfig({
   modules: ['@nuxtjs/supabase', '@pinia/nuxt'],
+
+  css: ['~/assets/css/main.css'],
   
   // 明確啟用頁面路由
   pages: true,

@@ -1,111 +1,190 @@
 <!-- app.vue -->
 <template>
   <div>
-    <!-- 導航欄 -->
-    <nav style="background-color: #f0f0f0; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
-      <div>
-        <NuxtLink to="/">首頁</NuxtLink>
-      </div>
+    <nav class="nav">
+      <div class="nav-inner">
+        <NuxtLink to="/" class="nav-brand">✦ 智能保養</NuxtLink>
 
-      <!-- 個人資料下拉菜單 -->
-      <div style="position: relative;">
-        <button 
-          @click="toggleProfileMenu"
-          style="padding: 8px 12px; cursor: pointer;"
-        >
-          👤 個人資料
-        </button>
+        <div class="nav-right">
+          <div class="nav-menu-wrap">
+            <button class="nav-profile-btn" @click="toggleProfileMenu">
+              <span class="nav-avatar">👤</span>
+              <span>個人資料</span>
+            </button>
 
-        <!-- 下拉菜單 -->
-        <div 
-          v-if="showProfileMenu"
-          style="
-            position: absolute;
-            top: 100%;
-            right: 0;
-            background-color: white;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            min-width: 150px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            z-index: 1000;
-          "
-        >
-          <NuxtLink 
-            to="/profile"
-            @click="showProfileMenu = false"
-            style="display: block; padding: 10px 15px; text-decoration: none; color: #333; border-bottom: 1px solid #eee;"
-          >
-            資料修改
-          </NuxtLink>
-
-          <NuxtLink 
-            to="/beauty-plan"
-            @click="showProfileMenu = false"
-            style="display: block; padding: 10px 15px; text-decoration: none; color: #333;"
-          >
-            保養規劃
-          </NuxtLink>
-
-          <button
-            @click="handleLogout"
-            style="
-              width: 100%;
-              padding: 10px 15px;
-              background: none;
-              border: none;
-              border-top: 1px solid #eee;
-              text-align: left;
-              cursor: pointer;
-              color: #d32f2f;
-            "
-          >
-            登出
-          </button>
+            <div v-if="showProfileMenu" class="nav-dropdown card">
+              <NuxtLink
+                to="/profile"
+                class="nav-dropdown-item"
+                @click="showProfileMenu = false"
+              >
+                資料修改
+              </NuxtLink>
+              <NuxtLink
+                to="/beauty-plan"
+                class="nav-dropdown-item"
+                @click="showProfileMenu = false"
+              >
+                保養規劃
+              </NuxtLink>
+              <div class="nav-dropdown-divider"></div>
+              <button class="nav-logout-btn" @click="handleLogout">
+                登出
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </nav>
 
-    <!-- 頁面內容 -->
-    <main style="padding: 20px;">
-      <NuxtPage /> <!-- 這是最關鍵的一行，用來渲染 pages/ 裡面的頁面 -->
+    <main class="main-content">
+      <NuxtPage />
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue'
 
-const showProfileMenu = ref(false);
-const supabase = useSupabaseClient();
+const showProfileMenu = ref(false)
+const supabase = useSupabaseClient()
 
 const toggleProfileMenu = () => {
-  showProfileMenu.value = !showProfileMenu.value;
-};
+  showProfileMenu.value = !showProfileMenu.value
+}
 
 const handleLogout = async () => {
   try {
-    await supabase.auth.signOut();
-    showProfileMenu.value = false;
-    await navigateTo('/login');
+    await supabase.auth.signOut()
+    showProfileMenu.value = false
+    await navigateTo('/login')
   } catch (error) {
-    console.error('登出失敗:', error);
+    console.error('登出失敗:', error)
   }
-};
+}
 
-// 點擊菜單外部時關閉菜單
 const closeMenu = (event: Event) => {
-  const target = event.target as HTMLElement;
-  if (!target.closest('nav')) {
-    showProfileMenu.value = false;
+  const target = event.target as HTMLElement
+  if (!target.closest('.nav-menu-wrap')) {
+    showProfileMenu.value = false
   }
-};
+}
 
-onMounted(() => {
-  document.addEventListener('click', closeMenu);
-});
-
-onUnmounted(() => {
-  document.removeEventListener('click', closeMenu);
-});
+onMounted(() => document.addEventListener('click', closeMenu))
+onUnmounted(() => document.removeEventListener('click', closeMenu))
 </script>
+
+<style scoped>
+.nav {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border-light);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-5);
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-brand {
+  font-family: var(--font-heading);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+.nav-brand:hover {
+  color: var(--color-accent);
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.nav-menu-wrap {
+  position: relative;
+}
+
+.nav-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+
+.nav-profile-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-light);
+}
+
+.nav-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 160px;
+  padding: var(--space-2) 0;
+  z-index: 1000;
+}
+
+.nav-dropdown-item {
+  display: block;
+  padding: var(--space-2) var(--space-4);
+  font-size: 14px;
+  color: var(--color-text-primary);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.nav-dropdown-item:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-accent);
+}
+
+.nav-dropdown-divider {
+  height: 1px;
+  background: var(--color-border-light);
+  margin: var(--space-2) 0;
+}
+
+.nav-logout-btn {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-4);
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--color-red);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.nav-logout-btn:hover {
+  background: var(--color-red-light);
+}
+
+.main-content {
+  padding: var(--space-6) 0;
+}
+</style>

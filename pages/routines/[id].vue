@@ -1,5 +1,5 @@
 <template>
-  <div class="schedule-container">
+  <div class="schedule-page">
     <!-- 標題區 -->
     <div class="header">
       <h1>📅 每週保養排程</h1>
@@ -179,6 +179,24 @@
         </div>
       </div>
 
+      <!-- 使用順序建議（產品充足時） -->
+      <div v-if="isProductsSufficient" class="usage-tips-section">
+        <div class="usage-tips-header">
+          <span class="sufficient-badge">✨ 產品完整</span>
+          <h3>建議使用順序</h3>
+        </div>
+        <div class="usage-steps">
+          <div v-for="(tip, i) in usageOrderTips" :key="tip.category" class="usage-step">
+            <div class="step-number">{{ i + 1 }}</div>
+            <div class="step-body">
+              <strong class="step-cat">{{ tip.category }}</strong>
+              <span class="step-timing">{{ tip.timing }}</span>
+              <span class="step-note">{{ tip.tip }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 主要排程區域 -->
       <div class="main-grid">
         <!-- 左側：產品庫存 -->
@@ -231,97 +249,81 @@
             <span v-else class="theme-tag-empty">尚未設定主題（可在上方編輯排程主題）</span>
           </div>
 
-          <div class="days-grid">
-            <div
+          <!-- 日期標籤列 -->
+          <div class="day-tabs">
+            <button
               v-for="(dayName, dayIdx) in daysOfWeek"
               :key="dayIdx"
-              class="day-column"
-              :class="{ 'day-expanded': dayIdx === expandedDayIdx, 'day-collapsed': dayIdx !== expandedDayIdx }"
+              class="day-tab"
+              :class="{ 'active': dayIdx === expandedDayIdx }"
+              @click="expandedDayIdx = dayIdx"
             >
+              {{ dayName }}
+              <span
+                v-if="getMorningItems(dayIdx).length + getEveningItems(dayIdx).length > 0"
+                class="tab-count"
+              >{{ getMorningItems(dayIdx).length + getEveningItems(dayIdx).length }}</span>
+            </button>
+          </div>
+
+          <!-- 單日內容區：直接用 expandedDayIdx，不 v-for 全天 -->
+          <div class="day-view">
+            <!-- 早晨排程 -->
+            <div class="time-slot morning">
+              <div class="time-label">🌅 早晨</div>
               <div
-                class="day-header"
-                @click="expandedDayIdx = dayIdx"
-                style="cursor: pointer;"
+                class="drop-zone"
+                @dragover.prevent
+                @drop="onProductDrop($event, expandedDayIdx, 'morning')"
               >
-                <h3>{{ dayIdx === expandedDayIdx ? `週${dayName}` : dayName }}</h3>
-                <span v-if="dayIdx !== expandedDayIdx" class="day-item-count">
-                  {{ getMorningItems(dayIdx).length + getEveningItems(dayIdx).length }}
-                </span>
-              </div>
-
-              <div class="day-content">
-                <!-- 早晨排程 -->
-                <div class="time-slot morning">
-                  <div class="time-label">🌅 早晨</div>
-                  <div
-                    class="drop-zone"
-                    @dragover.prevent
-                    @drop="dayIdx === expandedDayIdx && onProductDrop($event, dayIdx, 'morning')"
-                  >
-                    <div
-                      v-for="(item, idx) in getMorningItems(dayIdx)"
-                      :key="item.id || `${dayIdx}-morning-${idx}`"
-                      class="scheduled-item"
-                      :class="{ 'is-recommendation': item.is_recommendation, 'is-locked': item.is_locked }"
-                      :draggable="!item.is_locked && dayIdx === expandedDayIdx"
-                      @dragstart="onProductDragStart($event, item, dayIdx, 'morning')"
-                    >
-                      <div class="item-content">
-                        <span class="index">{{ idx + 1 }}</span>
-                        <span class="name">{{ item.product_name }}</span>
-                      </div>
-                      <button
-                        @click="toggleItemLock(item)"
-                        class="btn-lock"
-                        :title="item.is_locked ? '解鎖（AI 可調整）' : '鎖定（AI 不會移動/刪除）'"
-                      >
-                        {{ item.is_locked ? '🔒' : '🔓' }}
-                      </button>
-                      <button
-                        @click="removeItem(dayIdx, 'morning', item.product_name)"
-                        class="btn-remove"
-                      >
-                        ×
-                      </button>
-                    </div>
+                <div
+                  v-for="(item, idx) in getMorningItems(expandedDayIdx)"
+                  :key="item.id || `${expandedDayIdx}-morning-${idx}`"
+                  class="scheduled-item"
+                  :class="{ 'is-recommendation': item.is_recommendation, 'is-locked': item.is_locked }"
+                  :draggable="!item.is_locked"
+                  @dragstart="onProductDragStart($event, item, expandedDayIdx, 'morning')"
+                >
+                  <div class="item-content">
+                    <span class="index">{{ idx + 1 }}</span>
+                    <span class="name">{{ item.product_name }}</span>
                   </div>
+                  <button
+                    @click="toggleItemLock(item)"
+                    class="btn-lock"
+                    :title="item.is_locked ? '解鎖（AI 可調整）' : '鎖定（AI 不會移動/刪除）'"
+                  >{{ item.is_locked ? '🔒' : '🔓' }}</button>
+                  <button @click="removeItem(expandedDayIdx, 'morning', item.product_name)" class="btn-remove">×</button>
                 </div>
+              </div>
+            </div>
 
-                <!-- 晚間排程 -->
-                <div class="time-slot evening">
-                  <div class="time-label">🌙 晚間</div>
-                  <div
-                    class="drop-zone"
-                    @dragover.prevent
-                    @drop="dayIdx === expandedDayIdx && onProductDrop($event, dayIdx, 'evening')"
-                  >
-                    <div
-                      v-for="(item, idx) in getEveningItems(dayIdx)"
-                      :key="item.id || `${dayIdx}-evening-${idx}`"
-                      class="scheduled-item"
-                      :class="{ 'is-recommendation': item.is_recommendation, 'is-locked': item.is_locked }"
-                      :draggable="!item.is_locked && dayIdx === expandedDayIdx"
-                      @dragstart="onProductDragStart($event, item, dayIdx, 'evening')"
-                    >
-                      <div class="item-content">
-                        <span class="index">{{ idx + 1 }}</span>
-                        <span class="name">{{ item.product_name }}</span>
-                      </div>
-                      <button
-                        @click="toggleItemLock(item)"
-                        class="btn-lock"
-                        :title="item.is_locked ? '解鎖（AI 可調整）' : '鎖定（AI 不會移動/刪除）'"
-                      >
-                        {{ item.is_locked ? '🔒' : '🔓' }}
-                      </button>
-                      <button
-                        @click="removeItem(dayIdx, 'evening', item.product_name)"
-                        class="btn-remove"
-                      >
-                        ×
-                      </button>
-                    </div>
+            <!-- 晚間排程 -->
+            <div class="time-slot evening">
+              <div class="time-label">🌙 晚間</div>
+              <div
+                class="drop-zone"
+                @dragover.prevent
+                @drop="onProductDrop($event, expandedDayIdx, 'evening')"
+              >
+                <div
+                  v-for="(item, idx) in getEveningItems(expandedDayIdx)"
+                  :key="item.id || `${expandedDayIdx}-evening-${idx}`"
+                  class="scheduled-item"
+                  :class="{ 'is-recommendation': item.is_recommendation, 'is-locked': item.is_locked }"
+                  :draggable="!item.is_locked"
+                  @dragstart="onProductDragStart($event, item, expandedDayIdx, 'evening')"
+                >
+                  <div class="item-content">
+                    <span class="index">{{ idx + 1 }}</span>
+                    <span class="name">{{ item.product_name }}</span>
                   </div>
+                  <button
+                    @click="toggleItemLock(item)"
+                    class="btn-lock"
+                    :title="item.is_locked ? '解鎖（AI 可調整）' : '鎖定（AI 不會移動/刪除）'"
+                  >{{ item.is_locked ? '🔒' : '🔓' }}</button>
+                  <button @click="removeItem(expandedDayIdx, 'evening', item.product_name)" class="btn-remove">×</button>
                 </div>
               </div>
             </div>
@@ -447,7 +449,7 @@ const selectedThemeTags = computed(() => {
 
 const missingCategories = computed(() => {
   const existing = new Set(availableProducts.value.map(p => normalizeCategory(p.product_category)));
-  return categoryOptions.filter(cat => !existing.has(cat));
+  return categoryOptions.filter(cat => cat !== '其他' && !existing.has(cat));
 });
 
 const extractReasonIngredients = (reason?: string): string[] => {
@@ -507,6 +509,32 @@ const unifiedRecommendations = computed(() => {
       ingredientsText: ingredients.length > 0 ? `推薦成分 ${ingredients.join('、')}` : '建議補齊此品類'
     };
   });
+});
+
+const OPTIONAL_CATEGORIES = new Set(['其他', '面膜', '眼霜']);
+
+const USAGE_ORDER = [
+  { category: '洗臉產品', timing: '早晚', tip: '清潔第一步，溫和帶走污垢' },
+  { category: '化妝水', timing: '早晚', tip: '補水收斂，幫助後續成分吸收' },
+  { category: '精華液', timing: '早晚', tip: '集中護理，針對肌膚問題' },
+  { category: '眼霜', timing: '早晚', tip: '在乳液前使用，輕拍至吸收' },
+  { category: '乳液', timing: '早晚', tip: '鎖水保濕，封住前一步驟成分' },
+  { category: '面膜', timing: '晚間', tip: '建議 1–3 次/週，可替換精華步驟' },
+  { category: '防曬', timing: '早晨', tip: '日間最後一步，需均勻補擦' },
+] as const;
+
+const isProductsSufficient = computed(() => {
+  if (availableProducts.value.length === 0) return false;
+  const coreCategories = (categoryOptions as readonly string[]).filter(c => !OPTIONAL_CATEGORIES.has(c));
+  const missingCore = missingCategories.value.filter(c => !OPTIONAL_CATEGORIES.has(c));
+  return missingCore.length === 0 && coreCategories.length > 0;
+});
+
+const usageOrderTips = computed(() => {
+  const existing = new Set(availableProducts.value.map(p => normalizeCategory(p.product_category)));
+  return USAGE_ORDER
+    .filter(item => existing.has(item.category))
+    .map((item, i) => ({ ...item, step: i + 1 }));
 });
 
 const loadTempRecommendations = () => {
@@ -1116,149 +1144,149 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.schedule-container {
+.schedule-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
-  padding: 2rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  padding: var(--space-6) var(--space-5);
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
+/* Header */
 .header {
-  max-width: 1400px;
-  margin: 0 auto 2rem;
+  margin: 0 auto var(--space-6);
   text-align: center;
 }
 
 .header h1 {
-  color: #2c3e50;
-  font-size: 2.5rem;
-  margin: 0 0 0.5rem;
+  font-family: var(--font-heading);
+  font-size: 26px;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-4);
 }
 
 .routine-meta-editor {
   max-width: 720px;
-  margin: 0.5rem auto 0;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--space-3);
 }
 
 .meta-name-input,
 .meta-description-input {
   width: 100%;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: 0.6rem 0.75rem;
-  font-size: 0.95rem;
-  background: #fff;
+  font-size: 15px;
+  font-family: var(--font-body);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
 }
 
-.meta-name-input {
-  font-weight: 700;
-  font-size: 1rem;
-  color: #1f2937;
+.meta-name-input { font-weight: 600; font-size: 16px; }
+
+.meta-name-input:focus,
+.meta-description-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
 }
 
 .meta-actions {
   display: flex;
-  gap: 0.6rem;
+  gap: var(--space-3);
   justify-content: center;
 }
 
-.btn-save-meta,
-.btn-reset-meta {
-  border: none;
-  border-radius: 6px;
-  padding: 0.45rem 0.9rem;
-  cursor: pointer;
-  font-weight: 700;
-}
-
 .btn-save-meta {
-  background: #2563eb;
+  padding: 6px 16px;
+  background: var(--color-accent);
   color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.18s;
 }
 
-.btn-save-meta:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+.btn-save-meta:hover:not(:disabled) { background: var(--color-accent-hover); }
+.btn-save-meta:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-reset-meta {
-  background: #e2e8f0;
-  color: #334155;
+  padding: 6px 14px;
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 13px;
 }
 
 .theme-merge-toggle {
-  border: 1px solid #16a34a;
-  background: #ecfdf3;
-  color: #166534;
-  border-radius: 8px;
-  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-sage);
+  background: var(--color-sage-light);
+  color: var(--color-sage);
+  border-radius: var(--radius-md);
+  padding: 6px 14px;
   cursor: pointer;
-  font-weight: 700;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s;
 }
+
+.theme-merge-toggle:hover { background: #D8ECD8; }
 
 .themes-section.inline-merged {
   margin-bottom: 0;
   text-align: left;
 }
 
+/* Mode toggle */
 .mode-toggle {
-  max-width: 1400px;
-  margin: 0 auto 2rem;
+  margin: 0 auto var(--space-6);
   display: flex;
-  gap: 1rem;
+  gap: var(--space-3);
   justify-content: center;
 }
 
 .mode-btn {
-  padding: 0.75rem 1.5rem;
-  border: 2px solid #bdc3c7;
-  background: white;
-  color: #2c3e50;
-  border-radius: 6px;
+  padding: 8px 20px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-weight: 700;
-  transition: all 0.2s;
-  font-size: 1rem;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.18s;
 }
 
-.mode-btn:hover {
-  border-color: #3498db;
-  background: #ecf0f1;
-}
-
-.mode-btn.active {
-  background: #3498db;
-  color: white;
-  border-color: #3498db;
-  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
-}
+.mode-btn:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.mode-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .mode-btn.ai-regenerate {
-  background: linear-gradient(135deg, #2980b9 0%, #3498db 100%);
-  color: white;
-  border-color: #2980b9;
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
 }
 
 .mode-btn.ai-regenerate:hover:not(:disabled) {
-  border-color: #1a5c8e;
-  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
 }
 
-.mode-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
+/* Loading */
 .loading-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.3);
+  inset: 0;
+  background: rgba(58, 50, 45, 0.35);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1267,1054 +1295,863 @@ onMounted(async () => {
 }
 
 .spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid rgba(52, 152, 219, 0.3);
-  border-top-color: #3498db;
+  width: 44px; height: 44px;
+  border: 3px solid rgba(160, 112, 96, 0.3);
+  border-top-color: var(--color-accent);
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.9s linear infinite;
+  margin-bottom: var(--space-4);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 
+.loading-overlay p { color: #fff; font-size: 15px; font-weight: 500; margin: 0; }
+
+/* Error banner */
 .error-banner {
-  max-width: 1400px;
-  margin: 0 auto 2rem;
-  padding: 1rem;
-  background: #fadbd8;
-  border: 2px solid #e74c3c;
-  border-radius: 8px;
-  color: #c0392b;
-  font-weight: 600;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-red-light);
+  border: 1px solid #E8C0C0;
+  border-radius: var(--radius-md);
+  color: #9A4A4A;
+  font-weight: 500;
+  margin-bottom: var(--space-5);
 }
 
-.content {
-  max-width: 1400px;
-  margin: 0 auto;
-}
+.content { /* no wrapper needed — schedule-page is the max-width container */ }
 
-/* 空排程提示區塊 */
+/* Empty routine alert */
 .empty-routine-alert {
-  background: linear-gradient(135deg, #e8f4f8 0%, #f0f8ff 100%);
-  border: 3px solid #3498db;
-  border-radius: 12px;
-  padding: 2.5rem;
-  text-align: center;
-  margin-bottom: 2rem;
+  background: var(--color-accent-light);
+  border: 2px solid #D8B8B0;
+  border-radius: var(--radius-lg);
+  padding: var(--space-8) var(--space-6);
+  margin-bottom: var(--space-6);
   display: flex;
   align-items: center;
-  gap: 2rem;
-  box-shadow: 0 4px 16px rgba(52, 152, 219, 0.15);
+  gap: var(--space-6);
+  box-shadow: var(--shadow-sm);
 }
 
-.alert-icon {
-  font-size: 3rem;
-  flex-shrink: 0;
-}
+.alert-icon { font-size: 2.5rem; flex-shrink: 0; }
 
-.alert-content {
-  flex: 1;
-  text-align: left;
-}
+.alert-content { flex: 1; text-align: left; }
 
 .alert-content h2 {
-  color: #2c3e50;
-  margin: 0 0 0.5rem;
-  font-size: 1.5rem;
+  font-family: var(--font-heading);
+  font-size: 20px;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-2);
 }
 
 .alert-message {
-  color: #555;
-  margin: 0.5rem 0 1.5rem;
-  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-5);
+  font-size: 14px;
   line-height: 1.6;
 }
 
-.alert-actions {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
+.alert-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
 
 .btn-primary {
-  padding: 0.7rem 1.5rem;
-  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-  color: white;
+  padding: 8px 20px;
+  background: var(--color-accent);
+  color: #fff;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s;
-  font-size: 0.9rem;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.18s;
 }
 
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
-}
+.btn-primary:hover { background: var(--color-accent-hover); }
 
 .btn-secondary {
-  padding: 0.7rem 1.5rem;
-  background: white;
-  color: #3498db;
-  border: 2px solid #3498db;
-  border-radius: 6px;
+  padding: 8px 20px;
+  background: var(--color-surface);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
   cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.18s;
+}
+
+.btn-secondary:hover { background: var(--color-accent-light); }
+
+/* Recommendations section */
+/* Usage tips (sufficient products) */
+.usage-tips-section {
+  margin-bottom: var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+}
+
+.usage-tips-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.usage-tips-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-family: var(--font-heading);
+  color: var(--color-text-primary);
+}
+
+.sufficient-badge {
+  display: inline-block;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 12px;
   font-weight: 600;
-  transition: all 0.2s;
-  font-size: 0.9rem;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
 }
 
-.btn-secondary:hover {
-  background: #ecf0f1;
+.usage-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-/* 建議添購區塊 */
+.usage-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+}
+
+.step-number {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+
+.step-cat { color: var(--color-text-primary); font-weight: 600; }
+
+.step-timing {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.step-note {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
 .recommendations-section {
-  margin-bottom: 3rem;
-  background: linear-gradient(135deg, #fff9e6 0%, #fffaed 100%);
-  border: 3px solid #f39c12;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 6px 20px rgba(243, 156, 18, 0.15);
-  position: relative;
-  overflow: hidden;
-}
-
-.recommendations-section::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #f39c12, #e67e22, #d68910);
-  animation: gradientShift 3s ease-in-out infinite;
-}
-
-@keyframes gradientShift {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
+  margin-bottom: var(--space-6);
+  background: var(--color-amber-light);
+  border: 1px solid #DDB880;
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
 }
 
 .recommendations-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #f39c12;
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid #DDB880;
 }
 
-.recommendation-tools {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
+.recommendation-tools { display: flex; align-items: center; gap: var(--space-3); }
 
 .header-left h2 {
-  color: #d68910;
-  margin: 0 0 0.25rem;
-  font-size: 1.5rem;
+  font-family: var(--font-heading);
+  color: var(--color-amber);
+  margin: 0 0 4px;
+  font-size: 18px;
 }
 
-.header-subtitle {
-  color: #b8860b;
-  font-size: 0.9rem;
-  margin: 0;
-  font-weight: 500;
-}
+.header-subtitle { color: #8A6030; font-size: 13px; margin: 0; }
 
 .recommendation-count {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  background: #f39c12;
-  color: white;
-  padding: 0.75rem 1.25rem;
-  border-radius: 25px;
+  gap: var(--space-2);
+  background: var(--color-amber);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
   font-weight: 700;
 }
 
-.count-badge {
-  font-size: 1.5rem;
-}
-
-.count-label {
-  font-size: 0.85rem;
-}
+.count-badge { font-size: 1.3rem; }
+.count-label { font-size: 12px; }
 
 .recommendation-toggle {
-  border: 1px solid #f59e0b;
-  background: #fff;
-  color: #92400e;
-  border-radius: 999px;
-  padding: 0.42rem 0.8rem;
+  border: 1px solid var(--color-amber);
+  background: var(--color-surface);
+  color: #8A6030;
+  border-radius: var(--radius-pill);
+  padding: 4px 12px;
   cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 0.15s;
 }
 
-.recommendation-toggle:hover {
-  background: #fffbeb;
-}
+.recommendation-toggle:hover { background: var(--color-amber-light); }
+.recommendation-toggle:focus-visible { outline: 2px solid var(--color-amber); outline-offset: 2px; }
 
-.recommendation-toggle:focus-visible {
-  outline: 2px solid #d97706;
-  outline-offset: 2px;
-}
-
-.recommendation-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
+.recommendation-list { display: flex; flex-direction: column; }
 
 .missing-item-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px dashed #e5e7eb;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px dashed var(--color-border);
 }
 
-.missing-item-row:last-child {
-  border-bottom: none;
-}
+.missing-item-row:last-child { border-bottom: none; }
+.recommendation-row { align-items: center; }
 
-.recommendation-row {
-  align-items: flex-start;
-}
-
-.rec-text {
-  flex: 1;
-  color: #1f2937;
-  line-height: 1.5;
-}
-
-.rec-text strong {
-  color: #b45309;
-}
+.rec-text { flex: 1; color: var(--color-text-primary); font-size: 14px; line-height: 1.5; }
+.rec-text strong { color: var(--color-amber); }
 
 .add-link-btn {
-  border: 1px solid #3498db;
-  background: #eff6ff;
-  color: #1d4ed8;
-  border-radius: 999px;
-  padding: 0.3rem 0.75rem;
+  flex-shrink: 0;
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
   cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 0.15s;
+  white-space: nowrap;
 }
 
-.add-link-btn:hover {
-  background: #dbeafe;
-}
+.add-link-btn:hover { background: #EAD8D0; }
 
 .recommendations-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
 .recommendation-card {
-  background: white;
-  border: 2px solid #f39c12;
-  border-radius: 10px;
+  background: var(--color-surface);
+  border: 1px solid #DDB880;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: box-shadow 0.18s;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 2px 8px rgba(243, 156, 18, 0.1);
 }
 
-.recommendation-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 8px 24px rgba(243, 156, 18, 0.2);
-  border-color: #e67e22;
-}
+.recommendation-card:hover { box-shadow: var(--shadow-md); }
 
 .recommendation-card .card-header {
-  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-  color: white;
-  padding: 1rem;
+  background: var(--color-amber-light);
+  padding: var(--space-3) var(--space-4);
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
+  border-bottom: 1px solid #DDB880;
 }
 
-.recommendation-card .card-header .icon {
-  font-size: 1.5rem;
-  flex-shrink: 0;
-}
-
-.recommendation-card .card-header .ingredient-name {
-  flex: 1;
-  font-weight: 700;
-  font-size: 1.05rem;
-  margin: 0;
-}
-
-.recommendation-card .card-body {
-  padding: 1rem;
-  flex: 1;
-}
-
-.recommendation-card .card-body .benefit {
-  margin: 0;
-  font-size: 0.9rem;
-  color: #7f8c8d;
-  line-height: 1.6;
-}
-
-.recommendation-card .card-footer {
-  padding: 0.75rem 1rem;
-  background: #f8f9fa;
-  border-top: 1px solid #ecf0f1;
-}
-
-.recommendation-card .card-footer .note {
-  margin: 0;
-  font-size: 0.8rem;
-  color: #95a5a6;
-  font-style: italic;
-}
+.recommendation-card .card-header .icon { font-size: 1.3rem; flex-shrink: 0; }
+.recommendation-card .card-header .ingredient-name { font-size: 14px; font-weight: 600; color: var(--color-text-primary); margin: 0; }
+.recommendation-card .card-footer { padding: var(--space-3) var(--space-4); background: transparent; }
 
 .btn-add {
   width: 100%;
-  padding: 0.75rem 1rem;
-  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-  color: white;
+  padding: 8px;
+  background: var(--color-amber);
+  color: #fff;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-weight: 700;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s;
 }
 
-.btn-add:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
-}
-
-.btn-add:active {
-  transform: translateY(0);
-}
+.btn-add:hover { background: #AA8050; }
 
 .recommendations-info {
-  background: rgba(243, 156, 18, 0.1);
-  border-left: 4px solid #f39c12;
-  padding: 1rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  color: #5d4037;
-  margin-top: 1rem;
+  background: rgba(196, 154, 106, 0.1);
+  border-left: 3px solid var(--color-amber);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: #7A5A30;
+  margin-top: var(--space-3);
 }
 
-.recommendations-info p {
-  margin: 0;
-  line-height: 1.6;
-}
+.recommendations-info p { margin: 0; line-height: 1.6; }
 
 .recommendations-collapsed-note {
-  margin-top: 0.7rem;
-  padding: 0.7rem 0.85rem;
-  border-radius: 8px;
-  background: rgba(243, 156, 18, 0.08);
-  border: 1px dashed #f59e0b;
-  color: #92400e;
-  font-size: 0.85rem;
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: rgba(196, 154, 106, 0.08);
+  border: 1px dashed #DDB880;
+  color: #8A6030;
+  font-size: 13px;
 }
 
-.recommendations-collapsed-note p {
-  margin: 0;
-}
+.recommendations-collapsed-note p { margin: 0; }
 
-/* 排程主題選擇區塊 */
+/* Themes section */
 .themes-section {
-  margin-bottom: 3rem;
-  background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
-  border: 3px solid #4caf50;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.15);
+  margin-bottom: var(--space-6);
+  background: var(--color-sage-light);
+  border: 1px solid #C0D8C2;
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
 }
 
 .themes-header {
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #4caf50;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid #C0D8C2;
 }
 
-.themes-header h2 {
-  color: #2e7d32;
-  margin: 0 0 0.25rem;
-  font-size: 1.5rem;
-}
-
-.themes-subtitle {
-  color: #558b2f;
-  font-size: 0.95rem;
-  margin: 0;
-  font-weight: 500;
-}
+.themes-header h2 { color: var(--color-sage); margin: 0 0 4px; font-size: 18px; }
+.themes-subtitle { color: #5A7A60; font-size: 13px; margin: 0; }
 
 .themes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
 }
 
 .theme-checkbox {
-  background: white;
-  border: 2px solid #c8e6c9;
-  border-radius: 10px;
-  padding: 1rem;
+  background: var(--color-surface);
+  border: 1px solid #C0D8C2;
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: border-color 0.18s, background 0.18s;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-3);
   position: relative;
 }
 
-.theme-checkbox:hover {
-  border-color: #4caf50;
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.1);
-}
-
-.theme-checkbox:focus-visible {
-  outline: 2px solid #2563eb;
-  outline-offset: 2px;
-}
+.theme-checkbox:hover { border-color: var(--color-sage); }
+.theme-checkbox:focus-visible { outline: 2px solid var(--color-sage); outline-offset: 2px; }
 
 .theme-checkbox.selected {
-  background: linear-gradient(135deg, #c8e6c9 0%, #dcedc8 100%);
-  border-color: #4caf50;
-  box-shadow: 0 4px 16px rgba(76, 175, 80, 0.2);
+  background: #D8ECD8;
+  border-color: var(--color-sage);
 }
 
-.theme-icon {
-  font-size: 1.75rem;
-  flex-shrink: 0;
-}
-
-.theme-info {
-  flex: 1;
-}
-
-.theme-label {
-  font-weight: 700;
-  color: #2e7d32;
-  margin-bottom: 0.25rem;
-}
-
-.theme-desc {
-  font-size: 0.85rem;
-  color: #558b2f;
-  line-height: 1.4;
-}
+.theme-icon { font-size: 1.5rem; flex-shrink: 0; }
+.theme-info { flex: 1; }
+.theme-label { font-weight: 600; font-size: 13px; color: var(--color-text-primary); margin-bottom: 2px; }
+.theme-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.4; }
 
 .checkmark {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 24px;
-  height: 24px;
-  background: #4caf50;
-  color: white;
+  top: 6px; right: 6px;
+  width: 20px; height: 20px;
+  background: var(--color-sage);
+  color: #fff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9rem;
+  font-size: 11px;
   font-weight: 700;
 }
 
 .custom-themes {
-  background: white;
-  border: 2px solid #c8e6c9;
-  border-radius: 10px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  background: var(--color-surface);
+  border: 1px solid #C0D8C2;
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
-.custom-themes label {
-  display: block;
-  color: #2e7d32;
-  font-weight: 700;
-  margin-bottom: 0.75rem;
-}
+.custom-themes label { display: block; font-size: 13px; font-weight: 500; color: var(--color-sage); margin-bottom: var(--space-3); }
 
-.custom-input-group {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
+.custom-input-group { display: flex; gap: var(--space-3); margin-bottom: var(--space-3); }
 
 .custom-input-group input {
   flex: 1;
-  padding: 0.75rem;
-  border: 1px solid #c8e6c9;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  transition: all 0.2s;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.18s;
 }
 
-.custom-input-group input:focus {
-  outline: none;
-  border-color: #4caf50;
-  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
-}
+.custom-input-group input:focus { border-color: var(--color-sage); box-shadow: 0 0 0 3px var(--color-sage-light); }
 
 .btn-add-theme {
-  padding: 0.75rem 1.25rem;
-  background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
-  color: white;
+  padding: 8px 16px;
+  background: var(--color-sage);
+  color: #fff;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-weight: 700;
-  transition: all 0.2s;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
   white-space: nowrap;
+  transition: background 0.15s;
 }
 
-.btn-add-theme:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
-}
+.btn-add-theme:hover { background: #6A8A70; }
 
-.custom-themes-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
+.custom-themes-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
 .custom-theme-badge {
-  background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%);
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
+  background: var(--color-sage);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  font-size: 0.9rem;
+  gap: var(--space-2);
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .btn-remove {
-  background: rgba(255, 255, 255, 0.3);
-  color: white;
+  background: rgba(255,255,255,0.3);
+  color: #fff;
   border: none;
   border-radius: 50%;
-  width: 20px;
-  height: 20px;
+  width: 18px; height: 18px;
   padding: 0;
   cursor: pointer;
   font-weight: 700;
-  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 12px;
 }
 
-.btn-remove:hover {
-  background: rgba(255, 255, 255, 0.5);
-}
+.btn-remove:hover { background: rgba(255,255,255,0.5); }
 
 .btn-save-themes {
   width: 100%;
-  padding: 0.9rem 1.5rem;
-  background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
-  color: white;
+  padding: 10px 16px;
+  background: var(--color-sage);
+  color: #fff;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-weight: 700;
-  font-size: 1rem;
-  transition: all 0.2s;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.18s;
 }
 
-.btn-save-themes:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.3);
-}
+.btn-save-themes:hover { background: #6A8A70; }
+.btn-save-themes:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.btn-save-themes:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* 主要排程區域 */
+/* Main grid */
 .main-grid {
   display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 2rem;
-  margin-bottom: 2rem;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+  align-items: start;
 }
 
 .section {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
 }
 
 .section h2 {
-  color: #2c3e50;
+  font-family: var(--font-heading);
+  font-size: 17px;
+  color: var(--color-text-primary);
   margin-top: 0;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .routine-theme-tags {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.45rem;
-  margin: 0.45rem 0 1rem;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-4);
 }
 
-.theme-tags-label {
-  font-size: 0.85rem;
-  color: #4b5563;
-  font-weight: 700;
-}
+.theme-tags-label { font-size: 12px; color: var(--color-text-secondary); font-weight: 500; }
 
 .theme-tag-chip {
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.65rem;
-  border-radius: 999px;
-  border: 1px solid #86efac;
-  background: #ecfdf3;
-  color: #166534;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.theme-tag-empty {
-  font-size: 0.8rem;
-  color: #64748b;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid #C0D8C2;
+  background: var(--color-sage-light);
+  color: var(--color-sage);
+  font-size: 11px;
   font-weight: 600;
 }
 
-.note {
-  color: #7f8c8d;
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
-}
+.theme-tag-empty { font-size: 12px; color: var(--color-text-muted); }
+
+.note { color: var(--color-text-muted); font-size: 13px; margin-bottom: var(--space-3); }
 
 .filter-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
-.filter-row label {
-  margin: 0;
-  font-size: 0.9rem;
-  color: #34495e;
-}
+.filter-row label { font-size: 13px; color: var(--color-text-secondary); margin: 0; }
 
 .category-filter-select {
   flex: 1;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 0.4rem 0.6rem;
-  font-size: 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 5px 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  outline: none;
 }
 
-/* 左側面板：產品庫存 */
+.category-filter-select:focus { border-color: var(--color-accent); }
+
+/* Product inventory */
 .left-panel .product-list {
   min-height: 400px;
-  background: #f8f9fa;
-  border: 2px dashed #bdc3c7;
-  border-radius: 8px;
-  padding: 1rem;
+  background: var(--color-surface-alt);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-2);
 }
 
 .product-item {
-  background: white;
-  border: 2px solid #3498db;
-  border-radius: 6px;
-  padding: 0.75rem 1rem;
-  color: #2c3e50;
-  font-weight: 600;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 500;
   cursor: move;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: all 0.2s;
+  transition: background 0.15s, transform 0.15s;
   user-select: none;
 }
 
-.product-item:hover {
-  background: #ecf0f1;
-  transform: translateX(2px);
-}
+.product-item:hover { background: var(--color-accent-light); transform: translateX(2px); }
 
 .product-item.is-recommendation {
-  border-color: #f39c12;
-  background: #fffaed;
+  border-color: var(--color-amber);
+  background: var(--color-amber-light);
 }
 
 .product-item .badge {
-  background: #f39c12;
-  color: white;
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  margin-left: 0.5rem;
+  background: var(--color-amber);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  margin-left: var(--space-2);
 }
 
 .product-category-tag {
-  background: #eef2ff;
-  color: #4338ca;
-  border-radius: 12px;
-  padding: 0.2rem 0.5rem;
-  font-size: 0.72rem;
+  background: var(--color-gold-light);
+  color: var(--color-gold);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  font-size: 11px;
   margin-left: auto;
-  margin-right: 0.35rem;
+  margin-right: var(--space-2);
 }
 
 .empty-inventory {
-  padding: 2rem;
+  padding: var(--space-8);
   text-align: center;
-  color: #95a5a6;
-  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  font-size: 13px;
 }
 
-/* 右側面板：每日排程 - 手風琴 */
-.days-grid {
+/* Day tabs */
+.day-tabs {
   display: flex;
-  gap: 0.5rem;
-  align-items: stretch;
-  min-height: 300px;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
 }
 
-.day-column {
-  border: 2px solid #ecf0f1;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #f8f9fa;
-  transition: flex 0.3s ease;
-  min-width: 0;
-}
-
-.day-expanded {
-  flex: 4;
-  border-color: #3498db;
-}
-
-.day-collapsed {
-  flex: 0.6;
+.day-tab {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-light);
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
   cursor: pointer;
-}
-
-.day-collapsed:hover {
-  border-color: #95a5a6;
-  background: #f0f2f4;
-}
-
-.day-collapsed .day-content {
-  display: none;
-}
-
-.day-header {
-  background: #34495e;
-  color: white;
-  padding: 0.75rem;
+  font-size: 14px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  min-width: 36px;
   text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  user-select: none;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-.day-expanded .day-header {
-  background: #2980b9;
+.day-tab:hover:not(.active) {
+  background: var(--color-border-light);
+  border-color: var(--color-text-muted);
 }
 
-.day-header h3 {
-  margin: 0;
-  font-size: 1rem;
-  white-space: nowrap;
+.day-tab.active {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
 }
 
-.day-collapsed .day-header h3 {
-  writing-mode: vertical-rl;
-  font-size: 0.85rem;
-  padding: 0.5rem 0;
-}
-
-.day-item-count {
-  background: rgba(255,255,255,0.25);
-  border-radius: 10px;
-  padding: 1px 6px;
-  font-size: 0.75rem;
+.tab-count {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  font-size: 10px;
+  padding: 0 4px;
+  margin-left: 3px;
   font-weight: 700;
 }
 
-.day-content {
-  padding: 0.5rem;
+.day-tab:not(.active) .tab-count {
+  background: var(--color-accent);
+  color: #fff;
 }
+
+.day-view {
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+  overflow: hidden;
+}
+
+.day-content { padding: var(--space-2); }
 
 .time-slot {
-  border-bottom: 1px solid #ecf0f1;
-  padding: 0.75rem;
+  border-bottom: 1px solid var(--color-border-light);
+  padding: var(--space-2) var(--space-3);
 }
 
-.time-slot:last-child {
-  border-bottom: none;
-}
+.time-slot:last-child { border-bottom: none; }
 
 .time-label {
-  font-weight: 700;
-  color: #2c3e50;
-  font-size: 0.85rem;
-  margin-bottom: 0.5rem;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-2);
 }
 
 .drop-zone {
-  min-height: 80px;
-  background: white;
-  border: 2px dashed #3498db;
-  border-radius: 4px;
-  padding: 0.5rem;
+  min-height: 70px;
+  background: var(--color-surface);
+  border: 2px dashed var(--color-accent);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  transition: all 0.2s;
+  gap: var(--space-2);
+  transition: background 0.15s, border-color 0.15s;
 }
 
-.drop-zone:hover {
-  background: #f0f8ff;
-  border-color: #2980b9;
-}
-
-.drop-zone.ghost {
-  background: #e3f2fd;
-  border-style: solid;
-}
+.drop-zone:hover { background: var(--color-accent-light); }
 
 .scheduled-item {
-  background: #ecf0f1;
-  border-radius: 4px;
-  padding: 0.5rem;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-2);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.85rem;
+  gap: var(--space-2);
+  font-size: 12px;
   cursor: move;
-  transition: all 0.2s;
+  transition: background 0.15s;
+  border: 1px solid var(--color-border-light);
 }
 
-.scheduled-item:hover {
-  background: #bdc3c7;
-}
+.scheduled-item:hover { background: var(--color-border-light); }
 
 .scheduled-item.is-recommendation {
-  background: #fff3cd;
-  border-left: 3px solid #f39c12;
+  background: var(--color-amber-light);
+  border-left: 2px solid var(--color-amber);
 }
 
 .scheduled-item.is-locked {
-  border-left: 3px solid #2563eb;
-  background: #eaf2ff;
+  border-left: 2px solid var(--color-gold);
+  background: var(--color-gold-light);
 }
 
 .btn-lock {
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 0.95rem;
-  padding: 0.1rem 0.25rem;
+  font-size: 13px;
+  padding: 1px 3px;
 }
 
-.btn-lock:hover {
-  transform: scale(1.06);
-}
+.btn-lock:hover { transform: scale(1.1); }
 
-.item-content {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex: 1;
-  min-width: 0;
-}
-
-.item-content .index {
-  font-weight: 700;
-  color: #7f8c8d;
-  min-width: 20px;
-}
-
-.item-content .name {
-  flex: 1;
-  color: #2c3e50;
-  word-break: break-word;
-}
+.item-content { display: flex; align-items: center; gap: var(--space-2); flex: 1; min-width: 0; }
+.item-content .index { font-weight: 700; color: var(--color-text-muted); min-width: 18px; font-size: 11px; }
+.item-content .name { flex: 1; color: var(--color-text-primary); word-break: break-word; }
 
 .btn-remove {
-  background: #e74c3c;
-  color: white;
+  background: var(--color-red);
+  color: #fff;
   border: none;
-  border-radius: 4px;
-  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
   cursor: pointer;
-  font-weight: 700;
-  transition: background 0.2s;
-  min-width: 24px;
+  font-size: 13px;
+  transition: background 0.15s;
+  min-width: 22px;
 }
 
-.btn-remove:hover {
-  background: #c0392b;
-}
+.btn-remove:hover { background: #9A5252; }
+.btn-remove:disabled { background: var(--color-text-muted); cursor: not-allowed; }
 
-.btn-remove:disabled {
-  background: #94a3b8;
-  cursor: not-allowed;
-}
-
-/* 底部操作 */
+/* Footer */
 .footer {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-4);
   justify-content: center;
   align-items: center;
-  padding: 2rem;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.btn-save,
-.btn-reset {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 700;
-  transition: all 0.2s;
-  font-size: 1rem;
+  padding: var(--space-5) var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-save {
-  background: #27ae60;
-  color: white;
+  padding: 10px 24px;
+  background: var(--color-sage);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
+  transition: background 0.18s;
 }
 
-.btn-save:hover:not(:disabled) {
-  background: #229954;
-  transform: translateY(-2px);
-}
-
-.btn-save:disabled {
-  background: #bdc3c7;
-  cursor: not-allowed;
-}
+.btn-save:hover:not(:disabled) { background: #6A8A70; }
+.btn-save:disabled { background: var(--color-text-muted); cursor: not-allowed; }
 
 .btn-reset {
-  background: #95a5a6;
-  color: white;
+  padding: 10px 20px;
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 15px;
+  transition: background 0.15s;
 }
 
-.btn-reset:hover {
-  background: #7f8c8d;
-}
+.btn-reset:hover { background: var(--color-border-light); }
 
 .save-message {
-  margin-left: 1rem;
-  font-weight: 600;
-  color: #e74c3c;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-red);
 }
 
-.save-message.success {
-  color: #27ae60;
-}
+.save-message.success { color: var(--color-sage); }
 
-/* 響應式設計 */
+/* Responsive */
 @media (max-width: 1024px) {
-  .main-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .days-grid {
-    gap: 0.25rem;
-  }
+  .main-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 768px) {
-  .schedule-container {
-    padding: 1rem;
-  }
+  .schedule-page { padding: var(--space-4) var(--space-3); }
+  .section { padding: var(--space-4); }
+  .footer { flex-direction: column; }
+  .save-message { margin: 0; }
 
-  .header h1 {
-    font-size: 1.75rem;
+  /* 推薦區塊手機版縮小 */
+  .recommendations-section {
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
   }
-
-  .section {
-    padding: 1rem;
+  .recommendations-header {
+    margin-bottom: var(--space-2);
+    padding-bottom: var(--space-2);
+    flex-wrap: wrap;
+    gap: var(--space-2);
   }
-
-  .footer {
-    flex-direction: column;
-  }
-
-  .save-message {
-    margin-left: 0;
-    margin-top: 0.5rem;
-  }
-
-  .days-grid {
-    gap: 0.2rem;
-  }
-
-  .day-header h3 {
-    font-size: 0.85rem;
-  }
-
-  .time-label {
-    font-size: 0.75rem;
-  }
+  .header-left h2 { font-size: 14px; }
+  .header-subtitle { font-size: 12px; }
+  .recommendation-count { padding: 3px 8px; }
+  .count-badge { font-size: 0.95rem; }
+  .count-label { font-size: 11px; }
+  .recommendation-toggle { padding: 3px 10px; font-size: 11px; }
+  .recommendations-collapsed-note { margin-top: var(--space-2); }
 }
 
-/* 拖拽動畫 */
-.fade-enter-active,
-.fade-leave-active {
-  transition: all 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-.drag {
-  opacity: 0.5;
-}
+.fade-enter-active, .fade-leave-active { transition: all 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(-10px); }
+.drag { opacity: 0.5; }
 </style>

@@ -412,6 +412,78 @@ ${skinIssues.join(', ')}
   }
 
   /**
+   * 將查詢字串轉成 768 維 embedding（給 pgvector 檢索用）
+   */
+  async embedQuery(text: string): Promise<number[]> {
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(this.config.apiKey);
+    const model = genAI.getGenerativeModel({ model: 'text-embedding-004' });
+    const result = await model.embedContent(text);
+    const values = result.embedding?.values;
+    if (!Array.isArray(values) || values.length === 0) {
+      throw new Error('embedQuery 回傳空向量');
+    }
+    return values;
+  }
+
+  /**
+   * RAG 強化版產品評語：嚴格依據傳入的 PubMed 文獻 chunk 生成評語
+   */
+  async generateProductSummaryWithRAG(
+    ingredients: string[],
+    skinType: string,
+    ragContext: Array<{
+      title: string | null;
+      chunk_text: string;
+      journal: string | null;
+      publication_year: number | null;
+      doi: string | null;
+    }>
+  ): Promise<string> {
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(this.config.apiKey);
+      const model = genAI.getGenerativeModel({
+        model: this.config.model,
+        generationConfig: { temperature: 0.2 }
+      });
+
+      const skinTypeLabel = skinType || '一般膚質 (未提供)';
+      const contextBlock = ragContext.length === 0
+        ? '【無相關文獻】請以一般化妝品配方師知識作答，並在開頭明確標示「⚠ 本評語未檢索到對應醫學文獻」。'
+        : ragContext.map((d, i) => {
+            const meta = [d.journal, d.publication_year].filter(Boolean).join(', ');
+            return `[文獻${i + 1}] ${d.title ?? '(無標題)'}${meta ? ` (${meta})` : ''}\n${d.chunk_text}`;
+          }).join('\n\n');
+
+      const prompt = `
+你是一位專業的化妝品配方師與皮膚科顧問。
+
+【成分表】${ingredients.join(', ')}
+【使用者膚質】${skinTypeLabel}
+
+【參考醫學文獻】
+${contextBlock}
+
+嚴格輸出規則：
+1. 評語必須「嚴格基於上方文獻」，不可編造文獻未提及的功效或風險。
+2. 點出產品「核心功效」與對該膚質的「使用建議或潛在風險」。
+3. 字數 ≤ 120 字（含文獻引用），語氣專業且溫柔。
+4. 若引用文獻內容，於該句末標註 [文獻X]。
+5. 純文字輸出，不可使用任何 Markdown 標記 (如 ** 或 #)。
+`;
+
+      const result = await model.generateContent(prompt);
+      const summary = result.response.text();
+      console.log(`[AIService] 生成 RAG 產品總結（引用 ${ragContext.length} 篇文獻）`);
+      return summary;
+    } catch (error: any) {
+      console.error('[AIService] RAG 總結錯誤:', error.message);
+      throw new Error(`生成 RAG 產品評語失敗: ${error.message}`);
+    }
+  }
+
+  /**
    * 生成成分總結評語（用於 analyze.post.ts 的配方評估）
    */
   async generateProductSummary(

@@ -155,11 +155,38 @@ export default defineEventHandler(async (event) => {
     // 計算安全/未知成分（使用 Set 提升性能）
     const safeOrUnknownIngredients = inciArray.filter(inci => !flaggedInciNames.has(inci));
 
-    // 7. 使用 AIService 生成配方綜合評估
+    // 7a. RAG 檢索：query embedding → pgvector top-K 文獻
+    let ragContext: any[] = [];
+    try {
+      const queryText = `${inciArray.slice(0, 5).join(', ')} skincare effects safety ${skinType || ''}`;
+      const queryEmbedding = await aiService.embedQuery(queryText);
+      const { data: matches, error: rpcError } = await supabase.rpc('match_medical_documents', {
+        query_embedding: queryEmbedding,
+        match_count: 3,
+        ingredient_filter: null,
+      });
+      if (rpcError) throw new Error(rpcError.message);
+      ragContext = matches || [];
+      console.log(`[Analyze API] RAG 命中 ${ragContext.length} 篇文獻`);
+    } catch (ragError: any) {
+      console.warn('[Analyze API] RAG 檢索失敗，降級為純 LLM 評語:', ragError.message);
+      ragContext = [];
+    }
+
+    // 7b. 生成評語（有 RAG context 走文獻佐證版，否則 fallback 純 LLM）
     let aiSummary: string;
     try {
-      console.log('[Analyze API] 使用 AIService 生成產品評語');
-      aiSummary = await aiService.generateProductSummary(inciArray, skinType || 'general');
+      if (ragContext.length > 0) {
+        console.log('[Analyze API] 使用 AIService 生成 RAG 產品評語');
+        aiSummary = await aiService.generateProductSummaryWithRAG(
+          inciArray,
+          skinType || 'general',
+          ragContext
+        );
+      } else {
+        console.log('[Analyze API] 使用 AIService 生成產品評語（無 RAG）');
+        aiSummary = await aiService.generateProductSummary(inciArray, skinType || 'general');
+      }
     } catch (summaryError: any) {
       console.error('[Analyze API] AI 評語生成失敗:', summaryError.message);
       aiSummary = '產品評語生成失敗，但成分分析已完成。';
@@ -178,7 +205,15 @@ export default defineEventHandler(async (event) => {
           skinTypeAlerts,    // DB 處理：膚質黃燈
           safeList: safeOrUnknownIngredients // DB 未匹配到的成分
         },
-        overallSummary: aiSummary
+        overallSummary: aiSummary,
+        references: ragContext.map((d: any) => ({
+          title: d.title,
+          journal: d.journal,
+          year: d.publication_year,
+          doi: d.doi,
+          ingredient_query: d.ingredient_query,
+          similarity: d.similarity,
+        }))
       }
     };
 

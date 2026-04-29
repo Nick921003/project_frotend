@@ -1,6 +1,9 @@
 // server/api/analyze.post.ts
 import { createClient } from '@supabase/supabase-js';
+import { serverSupabaseUser } from '#supabase/server';
 import { getAIService } from '~/server/services/aiService';
+
+const GUEST_DAILY_LIMIT = 3;
 
 // 定義有效的膚質類型
 const VALID_SKIN_TYPES = ['oily', 'dry', 'combination', 'sensitive', 'normal'];
@@ -26,6 +29,36 @@ export default defineEventHandler(async (event) => {
 
     if (rawImages.length === 0) {
       throw createError({ statusCode: 400, statusMessage: '缺少必要參數：imageBase64 或 imageBase64Array' });
+    }
+
+    // 訪客限速：每 IP 每天 GUEST_DAILY_LIMIT 次
+    const user = await serverSupabaseUser(event).catch(() => null);
+    if (!user) {
+      const ip =
+        getRequestHeader(event, 'x-forwarded-for')?.split(',')[0].trim() ||
+        event.node.req.socket?.remoteAddress ||
+        'unknown';
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+      const { data: limitRow } = await supabase
+        .from('guest_rate_limits')
+        .select('count')
+        .eq('ip', ip)
+        .eq('date', today)
+        .single();
+
+      const currentCount = (limitRow as any)?.count ?? 0;
+
+      if (currentCount >= GUEST_DAILY_LIMIT) {
+        throw createError({
+          statusCode: 429,
+          statusMessage: `訪客每日分析上限為 ${GUEST_DAILY_LIMIT} 次，請登入後繼續使用`
+        });
+      }
+
+      await supabase
+        .from('guest_rate_limits')
+        .upsert({ ip, date: today, count: currentCount + 1 }, { onConflict: 'ip,date' });
     }
 
     // 驗證膚質類型（非必須，但若提供則必須有效）

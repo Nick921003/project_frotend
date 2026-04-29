@@ -46,25 +46,39 @@
 
       <p v-if="errorMsg" class="login-error">{{ errorMsg }}</p>
 
-      <p class="login-toggle" @click="isLoginMode = !isLoginMode">
-        {{ isLoginMode ? '沒有帳號？點此註冊' : '已有帳號？點此登入' }}
+      <p v-if="isLoginMode && registrationEnabled" class="login-toggle" @click="isLoginMode = false">
+        沒有帳號？點此註冊
       </p>
+      <p v-else-if="!isLoginMode" class="login-toggle" @click="isLoginMode = true">
+        已有帳號？點此登入
+      </p>
+      <p v-else class="login-closed">目前暫停開放新用戶註冊</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
 const supabase = useSupabaseClient()
 
 const isLoginMode = ref(true)
 const isLoading = ref(false)
 const errorMsg = ref('')
+const registrationEnabled = ref(true)
 
 const email = ref('')
 const password = ref('')
 const baseSkinType = ref('oily')
+
+onMounted(async () => {
+  try {
+    const res = await $fetch<{ enabled: boolean }>('/api/auth/registration-status')
+    registrationEnabled.value = res.enabled
+  } catch {
+    registrationEnabled.value = true
+  }
+})
 
 const handleAuth = async () => {
   if (!email.value || !password.value) {
@@ -149,5 +163,13 @@ const handleAuth = async () => {
 
 .login-toggle:hover {
   color: var(--color-accent);
+}
+
+.login-closed {
+  margin-top: var(--space-4);
+  text-align: center;
+  font-size: 13px;
+  color: #999;
+  margin-bottom: 0;
 }
 </style>

@@ -4,9 +4,9 @@
     <!-- 頂部狀態列 -->
     <div class="status-bar">
       <span v-if="user" class="status-bar__text">
-        👤 會員模式 · 膚質：<strong>{{ selectedSkinType }}</strong>
+        會員模式 · 膚質：<strong>{{ selectedSkinType }}</strong>
       </span>
-      <span v-else class="status-bar__text">👻 訪客模式</span>
+      <span v-else class="status-bar__text">訪客</span>
 
       <button v-if="!user" class="btn btn-sm btn-ghost" @click="navigateTo('/login')">
         前往登入
@@ -150,7 +150,7 @@
       </div>
 
       <div v-if="result.data.overallSummary" class="alert-block alert-gold">
-        <h4>✨ AI 配方師總評</h4>
+        <h4>— AI 配方師總評</h4>
         <p style="margin: 0; line-height: 1.7;">{{ result.data.overallSummary }}</p>
       </div>
     </div>

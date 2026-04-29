@@ -284,65 +284,6 @@ Now, create the weekly routine as JSON only:
   }
 
   /**
-   * 生成分析總結的 Prompt
-   */
-  generateAnalysisPrompt(ingredients: string[], skinIssues: string[]): string {
-    return `
-【成分分析任務】
-
-分析下列美容產品成分對下列肌膚問題的影響。
-
-【產品成分】：
-${ingredients.join(', ')}
-
-【肌膚問題】：
-${skinIssues.join(', ')}
-
-【要求】：
-1. 評估這些成分對用戶肌膚問題的幫助程度（高/中/低）
-2. 指出潛在的刺激或不適成分
-3. 建議改善建議
-
-返回 JSON 格式：
-{
-  "overall_rating": "high/medium/low",
-  "benefits": ["benefit1", "benefit2"],
-  "potential_irritants": ["irritant1"],
-  "recommendations": ["recommendation1"]
-}
-`;
-  }
-
-  /**
-   * 調用 Gemini API 進行成分分析
-   */
-  async analyzeIngredients(
-    ingredients: string[],
-    skinIssues: string[]
-  ): Promise<Record<string, any>> {
-    try {
-      const prompt = this.generateAnalysisPrompt(ingredients, skinIssues);
-
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(this.config.apiKey);
-      const model = genAI.getGenerativeModel({ model: this.config.model });
-
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text();
-
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('無法從分析結果中提取 JSON');
-      }
-
-      return JSON.parse(jsonMatch[0]);
-    } catch (error: any) {
-      console.error('[AIService] 分析錯誤:', error.message);
-      throw new Error(`成分分析失敗: ${error.message}`);
-    }
-  }
-
-  /**
    * 進行圖像 OCR 成分辨識（提取產品名稱 + INCI 陣列）
    * 支援單張或多張照片（同一產品不同角度）
    */
@@ -359,7 +300,10 @@ ${skinIssues.join(', ')}
         systemInstruction: `你是一位國際頂尖的化妝品配方師與影像辨識專家。
 你的任務是：辨識使用者上傳的保養品照片，提取產品名稱與所有成分。
 嚴格規則：
-1. productName：從標籤或外包裝找出最完整的產品名稱（可含品牌名）。優先使用中文名稱；若同時有中文與英文，格式為「中文名稱（英文名稱）」；若只有英文則直接回傳英文；若找不到則回傳 null。
+1. productName：從標籤或外包裝找出最完整的產品名稱（可含品牌名）。命名規則如下：
+   - 若標籤上有完整中文名稱（例如「理膚寶水清爽保濕乳液」）：直接使用中文，不附加英文。
+   - 若品牌名是英文縮寫或英文商標（如 DRWU、SK-II、CeraVe、La Roche-Posay、Tatcha 等），而無對應中文品牌名：以「英文品牌名 + 中文品類描述」格式命名，例如「DRWU精華液」、「CeraVe保濕乳霜」、「La Roche-Posay防曬乳」。
+   - 若完全無法辨識產品名稱：回傳 null。
 2. ingredients：將所有語言（包含中文、日文、韓文）、俗名或錯別字，強制精確翻譯為標準的「INCI Name (國際化妝品原料命名)」，全英文。
 3. 忽略標點符號、濃度百分比、用途說明等非成分資訊。
 4. 若有多張照片，請合併所有照片的成分，去除重複後回傳。
@@ -452,16 +396,6 @@ ${skinIssues.join(', ')}
     }
   }
 
-  /**
-   * 取得服務配置信息（用於調試）
-   */
-  getConfig(): Omit<GeminiConfig, 'apiKey'> {
-    return {
-      model: this.config.model,
-      temperature: this.config.temperature,
-      maxTokens: this.config.maxTokens
-    };
-  }
 }
 
 /**
@@ -479,9 +413,3 @@ export function getAIService(config?: Partial<GeminiConfig>): AIService {
   return instance;
 }
 
-/**
- * 重置服務（用於測試）
- */
-export function resetAIService(): void {
-  instance = null;
-}

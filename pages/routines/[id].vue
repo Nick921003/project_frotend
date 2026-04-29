@@ -82,7 +82,7 @@
             </div>
           </div>
 
-          <button @click="saveThemes" class="btn-save-themes">💾 保存主題設定</button>
+          <button @click="saveThemes" class="btn-save-themes">儲存主題設定</button>
         </div>
       </div>
     </div>
@@ -182,7 +182,7 @@
       <!-- 使用順序建議（產品充足時） -->
       <div v-if="isProductsSufficient" class="usage-tips-section">
         <div class="usage-tips-header">
-          <span class="sufficient-badge">✨ 產品完整</span>
+          <span class="sufficient-badge">· 產品完整</span>
           <h3>建議使用順序</h3>
         </div>
         <div class="usage-steps">
@@ -201,8 +201,8 @@
       <div class="main-grid">
         <!-- 左側：產品庫存 -->
         <div class="section left-panel">
-          <h2>🧴 保養品庫存</h2>
-          <p class="note">可拖拽至右側排程區域</p>
+          <h2>保養品庫存</h2>
+          <p class="note">拖拽至右側，或點 ＋早 / ＋晚 加入目前選擇的日期</p>
 
           <div class="filter-row">
             <label for="category-filter">分類篩選：</label>
@@ -224,6 +224,10 @@
               <span class="product-name">{{ product.product_name }}</span>
               <span class="product-category-tag">{{ toDisplayCategory(product.product_category) }}</span>
               <span v-if="product.is_recommendation" class="badge">AI建議</span>
+              <div class="product-item-actions">
+                <button class="btn-quick-add btn-quick-add--morning" @click.stop="quickAdd(product, 'morning')" title="加入早晨">＋早</button>
+                <button class="btn-quick-add btn-quick-add--evening" @click.stop="quickAdd(product, 'evening')" title="加入晚間">＋晚</button>
+              </div>
             </div>
             <div v-if="filteredAvailableProducts.length === 0" class="empty-inventory">
               <p>沒有可用的產品</p>
@@ -233,21 +237,7 @@
 
         <!-- 右側：每日排程 -->
         <div class="section right-panel">
-          <h2>⏰ 週排程</h2>
-
-          <div class="routine-theme-tags" aria-label="目前排程主題">
-            <span class="theme-tags-label">目前主題：</span>
-            <template v-if="selectedThemeTags.length > 0">
-              <span
-                v-for="(theme, idx) in selectedThemeTags"
-                :key="`table-theme-${idx}-${theme}`"
-                class="theme-tag-chip"
-              >
-                #{{ theme }}
-              </span>
-            </template>
-            <span v-else class="theme-tag-empty">尚未設定主題（可在上方編輯排程主題）</span>
-          </div>
+          <h2>週排程</h2>
 
           <!-- 日期標籤列 -->
           <div class="day-tabs">
@@ -266,6 +256,21 @@
             </button>
           </div>
 
+          <!-- 主題標籤 -->
+          <div class="routine-theme-tags" aria-label="目前排程主題">
+            <span class="theme-tags-label">主題：</span>
+            <template v-if="selectedThemeTags.length > 0">
+              <span
+                v-for="(theme, idx) in selectedThemeTags"
+                :key="`table-theme-${idx}-${theme}`"
+                class="theme-tag-chip"
+              >
+                #{{ theme }}
+              </span>
+            </template>
+            <span v-else class="theme-tag-empty">—</span>
+          </div>
+
           <!-- 單日內容區：直接用 expandedDayIdx，不 v-for 全天 -->
           <div class="day-view">
             <!-- 早晨排程 -->
@@ -276,6 +281,7 @@
                 @dragover.prevent
                 @drop="onProductDrop($event, expandedDayIdx, 'morning')"
               >
+                <div v-if="getMorningItems(expandedDayIdx).length === 0" class="drop-hint">拖拽產品到這裡</div>
                 <div
                   v-for="(item, idx) in getMorningItems(expandedDayIdx)"
                   :key="item.id || `${expandedDayIdx}-morning-${idx}`"
@@ -306,6 +312,7 @@
                 @dragover.prevent
                 @drop="onProductDrop($event, expandedDayIdx, 'evening')"
               >
+                <div v-if="getEveningItems(expandedDayIdx).length === 0" class="drop-hint">拖拽產品到這裡</div>
                 <div
                   v-for="(item, idx) in getEveningItems(expandedDayIdx)"
                   :key="item.id || `${expandedDayIdx}-evening-${idx}`"
@@ -334,7 +341,7 @@
       <!-- 底部操作按鈕 -->
       <div class="footer">
         <button @click="saveChanges" class="btn-save" :disabled="savingOrder">
-          {{ savingOrder ? '💾 保存中...' : '💾 保存排序' }}
+          {{ savingOrder ? '保存中...' : '保存排序' }}
         </button>
         <button @click="resetSchedule" class="btn-reset">
           🔄 重設
@@ -351,6 +358,8 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useCreateRoutine } from '~/composables/useCreateRoutine';
+import { useRoutineRecommendations } from '~/composables/useRoutineRecommendations';
+import { useRoutineDragDrop } from '~/composables/useRoutineDragDrop';
 import { AVAILABLE_ROUTINE_THEMES } from '~/types/routine';
 import type { RoutineItem, CabinetProductItem } from '~/types/routine';
 import { PRODUCT_CATEGORIES, normalizeProductCategory } from '~/utils/productCategories';
@@ -379,7 +388,6 @@ const routineDescriptionDraft = ref('');
 const savingMeta = ref(false);
 const showThemeEditor = ref(false);
 const showRecommendations = ref(true);
-const aiSuggestedItems = ref<RoutineItem[]>([]);
 
 const daysOfWeek = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -402,19 +410,6 @@ const currentCustomTheme = ref<string>(''); // 當前輸入的自定義主題
 // 計算屬性
 // ==================
 
-/**
- * 取得所有建議添購項目
- */
-const recommendationItems = computed(() => {
-  if (!routine.value) return [];
-  return routine.value.items.filter(item => item.is_recommendation === true);
-});
-
-const recommendationSource = computed(() => [
-  ...recommendationItems.value,
-  ...aiSuggestedItems.value
-]);
-
 const normalizeCategory = (category?: string) => normalizeProductCategory(category);
 
 const toDisplayCategory = (category?: string) => normalizeCategory(category);
@@ -425,6 +420,13 @@ const filteredAvailableProducts = computed(() => {
     product => normalizeCategory(product.product_category) === selectedCategoryFilter.value
   );
 });
+
+const {
+  unifiedRecommendations,
+  isProductsSufficient,
+  usageOrderTips,
+  loadTempRecommendations,
+} = useRoutineRecommendations(routine, availableProducts, PRODUCT_CATEGORIES, routineId);
 
 const selectedThemeTags = computed(() => {
   const sourceThemes = selectedThemes.value.length > 0
@@ -447,122 +449,6 @@ const selectedThemeTags = computed(() => {
   return Array.from(new Set([...predefined, ...custom]));
 });
 
-const missingCategories = computed(() => {
-  const existing = new Set(availableProducts.value.map(p => normalizeCategory(p.product_category)));
-  return categoryOptions.filter(cat => cat !== '其他' && !existing.has(cat));
-});
-
-const extractReasonIngredients = (reason?: string): string[] => {
-  const text = String(reason || '').trim();
-  if (!text) return [];
-
-  return text
-    .replace(/[：:]/g, ' ')
-    .split(/[、,，/\s]+/)
-    .map(token => token.trim())
-    .filter(token => token.length >= 2 && token.length <= 20)
-    .slice(0, 5);
-};
-
-const unifiedRecommendations = computed(() => {
-  const map = new Map<string, { productName: string; ingredients: Set<string> }>();
-
-  for (const category of missingCategories.value) {
-    if (!map.has(category)) {
-      map.set(category, {
-        productName: category,
-        ingredients: new Set<string>()
-      });
-    }
-  }
-
-  for (const item of recommendationSource.value) {
-    const category = normalizeCategory(item.product_category) || '其他';
-    const displayName = String(item.product_name || '').trim() || category;
-
-    if (!map.has(category)) {
-      map.set(category, {
-        productName: displayName,
-        ingredients: new Set<string>()
-      });
-    }
-
-    const target = map.get(category);
-    if (!target) continue;
-
-    for (const ingredient of Array.isArray(item.ingredients) ? item.ingredients : []) {
-      const value = String(ingredient || '').trim();
-      if (value) target.ingredients.add(value);
-    }
-
-    for (const ingredient of extractReasonIngredients(item.recommendation_reason)) {
-      target.ingredients.add(ingredient);
-    }
-  }
-
-  return Array.from(map.entries()).map(([category, value]) => {
-    const ingredients = Array.from(value.ingredients).slice(0, 6);
-    return {
-      category,
-      productName: value.productName,
-      ingredients,
-      ingredientsText: ingredients.length > 0 ? `推薦成分 ${ingredients.join('、')}` : '建議補齊此品類'
-    };
-  });
-});
-
-const OPTIONAL_CATEGORIES = new Set(['其他', '面膜', '眼霜']);
-
-const USAGE_ORDER = [
-  { category: '洗臉產品', timing: '早晚', tip: '清潔第一步，溫和帶走污垢' },
-  { category: '化妝水', timing: '早晚', tip: '補水收斂，幫助後續成分吸收' },
-  { category: '精華液', timing: '早晚', tip: '集中護理，針對肌膚問題' },
-  { category: '眼霜', timing: '早晚', tip: '在乳液前使用，輕拍至吸收' },
-  { category: '乳液', timing: '早晚', tip: '鎖水保濕，封住前一步驟成分' },
-  { category: '面膜', timing: '晚間', tip: '建議 1–3 次/週，可替換精華步驟' },
-  { category: '防曬', timing: '早晨', tip: '日間最後一步，需均勻補擦' },
-] as const;
-
-const isProductsSufficient = computed(() => {
-  if (availableProducts.value.length === 0) return false;
-  const coreCategories = (categoryOptions as readonly string[]).filter(c => !OPTIONAL_CATEGORIES.has(c));
-  const missingCore = missingCategories.value.filter(c => !OPTIONAL_CATEGORIES.has(c));
-  return missingCore.length === 0 && coreCategories.length > 0;
-});
-
-const usageOrderTips = computed(() => {
-  const existing = new Set(availableProducts.value.map(p => normalizeCategory(p.product_category)));
-  return USAGE_ORDER
-    .filter(item => existing.has(item.category))
-    .map((item, i) => ({ ...item, step: i + 1 }));
-});
-
-const loadTempRecommendations = () => {
-  if (typeof window === 'undefined') return;
-  const key = `routine-ai-recommendations:${routineId}`;
-  const raw = sessionStorage.getItem(key);
-  if (!raw) return;
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      aiSuggestedItems.value = parsed.map((item: any): RoutineItem => ({
-        day_of_week: 0,
-        time_of_day: 'morning' as const,
-        sequence_order: 0,
-        product_name: String(item?.product_name || '').trim(),
-        product_category: item?.product_category,
-        ingredients: Array.isArray(item?.ingredients) ? item.ingredients : [],
-        is_recommendation: true,
-        recommendation_reason: item?.recommendation_reason || 'AI 推薦候選品項'
-      })).filter(item => !!item.product_name);
-    }
-  } catch {
-    aiSuggestedItems.value = [];
-  } finally {
-    sessionStorage.removeItem(key);
-  }
-};
 
 const loadRoutineById = async () => {
   const response = await $fetch<{
@@ -700,37 +586,6 @@ const toggleItemLock = async (item: RoutineItem) => {
   }
 };
 
-/**
- * 將建議項目加入排程
- */
-const moveToRoutine = (item: RoutineItem) => {
-  if (!routine.value) return;
-
-  // 添加到週一早晨（默認位置）
-  const newItem: RoutineItem = {
-    ...item,
-    day_of_week: 1, // Monday
-    time_of_day: 'morning',
-    sequence_order: (getMorningItems(1).length)
-  };
-
-  routine.value.items.push(newItem);
-
-  // 從建議中移除
-  const idx = routine.value.items.findIndex(
-    i => i.product_name === item.product_name && i.is_recommendation === true
-  );
-  if (idx >= 0 && routine.value.items[idx]) {
-    routine.value.items[idx].is_recommendation = false;
-  }
-
-  const tempIdx = aiSuggestedItems.value.findIndex(
-    i => (i.product_name || '').trim().toLowerCase() === (item.product_name || '').trim().toLowerCase()
-  );
-  if (tempIdx >= 0) {
-    aiSuggestedItems.value.splice(tempIdx, 1);
-  }
-};
 
 const resetRoutineMetaDraft = () => {
   if (!routine.value) return;
@@ -928,7 +783,7 @@ const saveThemes = async () => {
   if (!routine.value || !routineId) return;
 
   savingOrder.value = true;
-  saveMessage.value = '💾 正在保存主題設定...';
+  saveMessage.value = '正在保存主題設定...';
 
   try {
     // 更新排程的主題
@@ -966,147 +821,11 @@ const saveThemes = async () => {
 };
 
 // ==================
-// 拖拽事件處理
+// 拖拽 + 快速新增
 // ==================
-let draggedProduct: CabinetProductItem | RoutineItem | null = null;
-let draggedFromInventory = false;
-
-/**
- * 從庫存開始拖拽
- */
-const onInventoryDragStart = (evt: DragEvent, product: CabinetProductItem) => {
-  draggedProduct = product;
-  draggedFromInventory = true;
-  if (evt.dataTransfer) {
-    evt.dataTransfer.effectAllowed = 'move';
-    evt.dataTransfer.setData('product', JSON.stringify(product));
-  }
-};
-
-/**
- * 從時間段開始拖拽（用於重新排序）
- */
-const onProductDragStart = (evt: DragEvent, item: RoutineItem, dayIdx: number, timeOfDay: 'morning' | 'evening') => {
-  if (item.is_locked) {
-    evt.preventDefault();
-    return;
-  }
-
-  draggedProduct = item;
-  draggedFromInventory = false;
-  if (evt.dataTransfer) {
-    evt.dataTransfer.effectAllowed = 'move';
-    evt.dataTransfer.setData('product', JSON.stringify(item));
-  }
-};
-
-/**
- * 放入時間段
- */
-const onProductDrop = (evt: DragEvent, dayIdx: number, timeOfDay: 'morning' | 'evening') => {
-  evt.preventDefault();
-  if (!draggedProduct || !routine.value) return;
-
-  const productName = draggedFromInventory 
-    ? (draggedProduct as CabinetProductItem).product_name
-    : (draggedProduct as RoutineItem).product_name;
-
-  // 檢查目標時段是否已經有相同的產品
-  const targetSlotHasDuplicate = routine.value.items.some(
-    item =>
-      item.product_name === productName &&
-      item.day_of_week === dayIdx &&
-      item.time_of_day === timeOfDay
-  );
-
-  if (targetSlotHasDuplicate) {
-    // 同一時段已有相同產品，無法放置
-    console.warn(`[拖拽] ${productName} 已在本時段存在，無法重複放置`);
-    draggedProduct = null;
-    draggedFromInventory = false;
-    return;
-  }
-
-  if (draggedFromInventory) {
-    // 從庫存新增到排程（檢查後添加，不重複）
-    const sequenceOrder = getItemsForTimeslot(dayIdx, timeOfDay).length;
-
-    const newItem: RoutineItem = {
-      product_name: (draggedProduct as CabinetProductItem).product_name,
-      product_category: (draggedProduct as CabinetProductItem).product_category,
-      day_of_week: dayIdx,
-      time_of_day: timeOfDay,
-      sequence_order: sequenceOrder,
-      is_recommendation: false
-    };
-
-    routine.value.items.push(newItem);
-  } else {
-    // 在排程內拖拽（移動產品，自動刪除原位置）
-    const draggedRoutineItem = draggedProduct as RoutineItem;
-
-    if (draggedRoutineItem.is_locked) {
-      saveSuccess.value = false;
-      saveMessage.value = '🔒 此項目已鎖定，無法拖拽移動';
-      draggedProduct = null;
-      draggedFromInventory = false;
-      return;
-    }
-    
-    // 尋找原始項目
-    const sourceItemIndex = routine.value.items.findIndex(
-      item =>
-        item.product_name === draggedRoutineItem.product_name &&
-        item.day_of_week === draggedRoutineItem.day_of_week &&
-        item.time_of_day === draggedRoutineItem.time_of_day
-    );
-
-    if (sourceItemIndex >= 0) {
-      const sourceItem = routine.value.items[sourceItemIndex];
-
-      // 確保 sourceItem 存在
-      if (!sourceItem) return;
-
-      // 如果拖拽到同一日期、同一時間段，不做任何操作
-      if (sourceItem.day_of_week === dayIdx && sourceItem.time_of_day === timeOfDay) {
-        draggedProduct = null;
-        draggedFromInventory = false;
-        return;
-      }
-
-      // 移動產品：先刪除原位置
-      routine.value.items.splice(sourceItemIndex, 1);
-
-      // 重新計算原時段的 sequence_order
-      const oldTimeSlot = getItemsForTimeslot(sourceItem.day_of_week, sourceItem.time_of_day);
-      oldTimeSlot.forEach((item, idx) => {
-        item.sequence_order = idx;
-      });
-
-      // 添加到新位置
-      const newSequenceOrder = getItemsForTimeslot(dayIdx, timeOfDay).length;
-      
-      const movedItem: RoutineItem = {
-        ...sourceItem,
-        product_name: sourceItem.product_name || '',
-        day_of_week: dayIdx,
-        time_of_day: timeOfDay,
-        sequence_order: newSequenceOrder
-      };
-
-      routine.value.items.push(movedItem);
-
-      // 重新計算新位置所在時段的 sequence_order
-      const targetTimeSlot = getItemsForTimeslot(dayIdx, timeOfDay);
-      targetTimeSlot.forEach((item, idx) => {
-        item.sequence_order = idx;
-      });
-    }
-  }
-
-  draggedProduct = null;
-  draggedFromInventory = false;
-};
+const { onInventoryDragStart, onProductDragStart, onProductDrop, quickAdd } = useRoutineDragDrop(
+  routine, expandedDayIdx, daysOfWeek, saveMessage, saveSuccess, getItemsForTimeslot
+);
 
 // ==================
 // 生命週期
@@ -1823,7 +1542,7 @@ onMounted(async () => {
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2);
-  margin: var(--space-2) 0 var(--space-4);
+  margin: var(--space-2) 0 var(--space-3);
 }
 
 .theme-tags-label { font-size: 12px; color: var(--color-text-secondary); font-weight: 500; }
@@ -1889,10 +1608,48 @@ onMounted(async () => {
   font-weight: 500;
   cursor: move;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: var(--space-2);
   transition: background 0.15s, transform 0.15s;
   user-select: none;
+}
+
+.product-item-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.btn-quick-add {
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1.6;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-quick-add--morning {
+  border-color: #d97706;
+  color: #d97706;
+  background: transparent;
+}
+
+.btn-quick-add--morning:hover {
+  background: #fef3c7;
+}
+
+.btn-quick-add--evening {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: transparent;
+}
+
+.btn-quick-add--evening:hover {
+  background: var(--color-accent-light);
 }
 
 .product-item:hover { background: var(--color-accent-light); transform: translateX(2px); }
@@ -1917,8 +1674,7 @@ onMounted(async () => {
   border-radius: var(--radius-pill);
   padding: 2px 8px;
   font-size: 11px;
-  margin-left: auto;
-  margin-right: var(--space-2);
+  flex-shrink: 0;
 }
 
 .empty-inventory {
@@ -1931,50 +1687,55 @@ onMounted(async () => {
 /* Day tabs */
 .day-tabs {
   display: flex;
-  gap: var(--space-1);
-  margin-bottom: var(--space-3);
-  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+  margin-bottom: 0;
 }
 
 .day-tab {
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-light);
+  flex: 1;
+  padding: 5px 0;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-border-light);
   background: var(--color-surface-alt);
   color: var(--color-text-secondary);
   cursor: pointer;
   font-size: 14px;
   font-family: var(--font-body);
   font-weight: 500;
-  min-width: 36px;
   text-align: center;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.18s, border-color 0.18s, color 0.18s, box-shadow 0.18s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 
 .day-tab:hover:not(.active) {
-  background: var(--color-border-light);
-  border-color: var(--color-text-muted);
+  background: var(--color-accent-light);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .day-tab.active {
-  background: var(--color-accent);
+  background: linear-gradient(135deg, #D4846A 0%, #C07050 100%);
   color: #fff;
-  border-color: var(--color-accent);
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(180, 90, 60, 0.28);
 }
 
 .tab-count {
   display: inline-block;
-  background: rgba(255, 255, 255, 0.35);
-  border-radius: 8px;
-  font-size: 10px;
-  padding: 0 4px;
-  margin-left: 3px;
-  font-weight: 700;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  flex-shrink: 0;
+  font-size: 0;
 }
 
-.day-tab:not(.active) .tab-count {
-  background: var(--color-accent);
-  color: #fff;
+.day-tab.active .tab-count {
+  background: rgba(255, 255, 255, 0.85);
 }
 
 .day-view {
@@ -1988,31 +1749,59 @@ onMounted(async () => {
 
 .time-slot {
   border-bottom: 1px solid var(--color-border-light);
-  padding: var(--space-2) var(--space-3);
 }
 
 .time-slot:last-child { border-bottom: none; }
 
 .time-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  margin-bottom: var(--space-2);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 10px var(--space-3);
+  margin-bottom: 0;
+}
+
+.time-slot.morning .time-label {
+  background: #FFF8EC;
+  color: #A05A18;
+  border-bottom: 1px solid #FFE4A8;
+}
+
+.time-slot.evening .time-label {
+  background: #EEF0F8;
+  color: #4A3A8A;
+  border-bottom: 1px solid #D8D4EE;
 }
 
 .drop-zone {
   min-height: 70px;
   background: var(--color-surface);
-  border: 2px dashed var(--color-accent);
+  border: 1.5px dashed #DDB8A8;
   border-radius: var(--radius-sm);
   padding: var(--space-2);
+  margin: var(--space-2) var(--space-3) var(--space-3);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
 }
 
-.drop-zone:hover { background: var(--color-accent-light); }
+.drop-zone:hover {
+  background: var(--color-accent-light);
+  border-color: var(--color-accent);
+  transform: scale(1.005);
+}
+
+.drop-hint {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-style: italic;
+  min-height: 50px;
+  pointer-events: none;
+}
 
 .scheduled-item {
   background: var(--color-surface-alt);

@@ -40,7 +40,7 @@
           <div class="mode-card__body">
             <p class="mode-desc">根據您的膚質、年齡、肌膚問題和現有產品，AI 會自動設計最適合的週保養規劃。</p>
             <ul class="mode-features">
-              <li>✨ 智能分析您的肌膚需求</li>
+              <li>智能分析您的肌膚需求</li>
               <li>📊 最大化利用現有產品</li>
               <li>💡 提供產品添購建議</li>
               <li>⚡ 節省規劃時間</li>

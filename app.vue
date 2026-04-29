@@ -3,7 +3,7 @@
   <div>
     <nav class="nav">
       <div class="nav-inner">
-        <NuxtLink to="/" class="nav-brand">✦ 智能保養</NuxtLink>
+        <NuxtLink to="/" class="nav-brand">分析與推薦</NuxtLink>
 
         <div class="nav-right">
           <div class="nav-menu-wrap">
@@ -27,6 +27,14 @@
               >
                 保養規劃
               </NuxtLink>
+              <NuxtLink
+                v-if="user"
+                to="/admin"
+                class="nav-dropdown-item"
+                @click="showProfileMenu = false"
+              >
+                後台管理
+              </NuxtLink>
               <div class="nav-dropdown-divider"></div>
               <button class="nav-logout-btn" @click="handleLogout">
                 登出
@@ -48,6 +56,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 
 const showProfileMenu = ref(false)
 const supabase = useSupabaseClient()
+const user = useSupabaseUser()
 
 const toggleProfileMenu = () => {
   showProfileMenu.value = !showProfileMenu.value
@@ -159,6 +168,7 @@ onUnmounted(() => document.removeEventListener('click', closeMenu))
   background: var(--color-surface-alt);
   color: var(--color-accent);
 }
+
 
 .nav-dropdown-divider {
   height: 1px;

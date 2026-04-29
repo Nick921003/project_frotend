@@ -46,7 +46,7 @@
       <h2 class="section-title" style="font-size: 18px; border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-4);">AI 分析結果</h2>
 
       <div v-if="product.overview" class="alert-block alert-gold">
-        <h4>✨ AI 配方師總評</h4>
+        <h4>— AI 配方師總評</h4>
         <p style="margin: 0;">{{ product.overview }}</p>
       </div>
 

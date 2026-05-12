@@ -26,6 +26,20 @@ function extractReasonIngredients(reason?: string): string[] {
     .slice(0, 5);
 }
 
+export interface UnifiedRecommendation {
+  category: string;
+  productName: string;
+  ingredients: string[];
+  ingredientsText: string;
+}
+
+export interface UsageOrderTip {
+  category: string;
+  timing: string;
+  tip: string;
+  step: number;
+}
+
 export function useRoutineRecommendations(
   routine: Ref<WeeklyRoutine | null>,
   availableProducts: Ref<CabinetProductItem[]>,

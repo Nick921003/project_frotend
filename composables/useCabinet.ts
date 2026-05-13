@@ -7,8 +7,14 @@ interface Product {
   product_category: string;
   raw_ingredients: string;
   analysis_result: any;
+  overview?: string | null;
   created_at?: string;
   updated_at?: string;
+  // 使用追蹤欄位
+  opened_at?: string | null;
+  estimated_finish_days?: number | null;
+  purchase_purpose?: string | null;
+  user_notes?: string | null;
 }
 
 interface CabinetListMeta {
@@ -132,6 +138,37 @@ export const useCabinet = () => {
   });
 
   /**
+   * 更新產品（支援基本資訊與追蹤欄位）
+   */
+  const updateProduct = async (productId: string, fields: Partial<Pick<Product,
+    'product_name' | 'product_category' | 'opened_at' | 'estimated_finish_days' | 'purchase_purpose' | 'user_notes'
+  >>) => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const response = await $fetch<{ success: boolean; data: Product }>(`/api/cabinet/${productId}`, {
+        method: 'PUT',
+        body: fields
+      });
+
+      if (response.success) {
+        const idx = products.value.findIndex(p => p.id === productId);
+        if (idx !== -1) {
+          products.value[idx] = { ...products.value[idx], ...response.data };
+        }
+        return response.data;
+      }
+    } catch (err: any) {
+      console.error('[useCabinet] updateProduct 錯誤:', err);
+      error.value = err.data?.message || err.message || '更新產品失敗';
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  /**
    * 刪除單一產品
    */
   const deleteProduct = async (productId: string) => {
@@ -168,6 +205,7 @@ export const useCabinet = () => {
     fetchProducts,
     goToPage,
     resetPage,
+    updateProduct,
     deleteProduct
   };
 };

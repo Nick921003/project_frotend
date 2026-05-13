@@ -103,6 +103,7 @@ Beauty_Analyzer_*.md
 # ==========================================
 scripts/batch_*.sql
 scripts/regulations_data.json
+scripts/populate-*.mjs
 
 # ==========================================
 # 二進位文件

@@ -142,7 +142,7 @@
 
       <div v-if="product.analysis_result.analysis.safeList?.length > 0" class="alert-block alert-green" style="margin-bottom: 0;">
         <h4>✅ 其他成分（無法規標記）</h4>
-        <p class="safe-list">{{ product.analysis_result.analysis.safeList.join('、') }}</p>
+        <p class="safe-list">{{ product.analysis_result.analysis.safeList.map((i: any) => typeof i === 'string' ? i : i.inci_name).join('、') }}</p>
       </div>
     </div>
   </div>

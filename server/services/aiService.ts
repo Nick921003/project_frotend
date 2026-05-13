@@ -371,7 +371,8 @@ Now, create the weekly routine as JSON only:
    */
   async generateProductSummary(
     ingredients: string[],
-    skinType: string
+    skinType: string,
+    matchedDbIngredients?: Array<{ inci_name: string; efficacy_tags?: string[]; function_summary?: string | null }>
   ): Promise<{ overview: string; verdict: string }> {
     try {
       const { GoogleGenerativeAI, SchemaType } = await import('@google/generative-ai');
@@ -394,16 +395,33 @@ Now, create the weekly routine as JSON only:
 
       const skinTypeLabel = skinType || '一般膚質 (未提供)';
 
-      const summaryPrompt = `
-      你是一位專業的化妝品配方師。請根據以下的保養品 INCI 成分表，以及使用者的膚質，給出評價。
+      // 從 DB 取得有 function_summary 的成分，組成結構化 context
+      const knownActives = (matchedDbIngredients || [])
+        .filter(i => i.function_summary)
+        .map(i => {
+          const tags = i.efficacy_tags?.length ? `[${i.efficacy_tags.join('/')}] ` : '';
+          return `- ${tags}${i.inci_name}：${i.function_summary}`;
+        });
 
-      成分表：${ingredients.join(', ')}
-      使用者膚質：${skinTypeLabel}
+      const knownContext = knownActives.length > 0
+        ? `\n\n已驗證活性成分（請優先依此說明，不必重新猜測）：\n${knownActives.join('\n')}`
+        : '';
 
-      回傳 JSON：
-      - overview：100字以內的整體評價，語氣像專業溫柔的皮膚科醫生，純文字無 Markdown。點出核心功效，給出是否推薦。
-      - verdict：一句話結論（30字以內），格式如「這瓶以保濕為主，適合乾性肌，油性肌效益有限」。
-    `;
+      const unknownIngredients = ingredients.filter(
+        name => !(matchedDbIngredients || []).some(d => d.inci_name === name && d.function_summary)
+      );
+      const unknownContext = unknownIngredients.length > 0
+        ? `\n\n其餘成分（自行判斷功效）：${unknownIngredients.join(', ')}`
+        : '';
+
+      const summaryPrompt = `你是一位專業的化妝品配方師。請根據以下資料，給出產品評價。
+${knownContext}${unknownContext}
+
+使用者膚質：${skinTypeLabel}
+
+回傳 JSON：
+- overview：100字以內的整體評價，語氣像專業溫柔的皮膚科醫生，純文字無 Markdown。點出核心功效，給出是否推薦。
+- verdict：一句話結論（30字以內），格式如「這瓶以保濕為主，適合乾性肌，油性肌效益有限」。`;
 
       const result = await model.generateContent(summaryPrompt);
       const parsed = JSON.parse(result.response.text());

@@ -185,8 +185,18 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    // 計算安全/未知成分（使用 Set 提升性能）
-    const safeOrUnknownIngredients = inciArray.filter(inci => !flaggedInciNames.has(inci));
+    // 計算安全/未知成分，同時附上 DB 中的功效說明
+    const dbMap = new Map((matchedIngredients as any[] ?? []).map((i: any) => [i.inci_name, i]));
+    const safeOrUnknownIngredients = inciArray
+      .filter(inci => !flaggedInciNames.has(inci))
+      .map(inci => {
+        const dbRow = dbMap.get(inci) as any;
+        return {
+          inci_name: inci,
+          efficacy_tags: dbRow?.efficacy_tags ?? [],
+          function_summary: dbRow?.function_summary ?? null
+        };
+      });
 
     // 7. 從 DB 資料計算 efficacySummary.primaryTags
     const tagCount: Record<string, number> = {};
@@ -231,7 +241,7 @@ export default defineEventHandler(async (event) => {
     let aiVerdict = '';
     try {
       console.log('[Analyze API] 使用 AIService 生成產品評語');
-      const summaryResult = await aiService.generateProductSummary(inciArray, skinType || 'general');
+      const summaryResult = await aiService.generateProductSummary(inciArray, skinType || 'general', matchedIngredients as any[] ?? []);
       aiOverview = summaryResult.overview;
       aiVerdict = summaryResult.verdict;
     } catch (summaryError: any) {

@@ -103,6 +103,7 @@ Beauty_Analyzer_*.md
 # ==========================================
 scripts/batch_*.sql
 scripts/regulations_data.json
+scripts/populate-*.mjs
 
 # ==========================================
 # 二進位文件
@@ -121,3 +122,6 @@ coverage/
 # 系統文件
 # ==========================================
 .env.example  # 使用 !.env.example 白名單示例文件
+
+# Git worktrees
+.worktrees/

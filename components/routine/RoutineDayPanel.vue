@@ -89,6 +89,30 @@
             <div v-if="item.notes && expandedNotes.has(itemKey(item, idx))" class="item-notes">
               {{ item.notes }}
             </div>
+            <details
+              v-if="item.product_id && productAnalysisMap.get(item.product_id)"
+              class="item-analysis"
+            >
+              <summary class="item-analysis__toggle">成分警告</summary>
+              <div class="item-analysis__body">
+                <template v-if="productAnalysisMap.get(item.product_id)?.regulatoryAlerts?.length">
+                  <p class="alert-label alert-label--red">🔴 法規警告</p>
+                  <ul>
+                    <li v-for="a in productAnalysisMap.get(item.product_id).regulatoryAlerts" :key="a.inci_name">
+                      {{ a.inci_name }}
+                    </li>
+                  </ul>
+                </template>
+                <template v-if="productAnalysisMap.get(item.product_id)?.skinTypeAlerts?.length">
+                  <p class="alert-label alert-label--yellow">🟡 膚質地雷</p>
+                  <ul>
+                    <li v-for="a in productAnalysisMap.get(item.product_id).skinTypeAlerts" :key="a.inci_name">
+                      {{ a.inci_name }}
+                    </li>
+                  </ul>
+                </template>
+              </div>
+            </details>
           </div>
         </div>
       </div>
@@ -138,6 +162,30 @@
             <div v-if="item.notes && expandedNotes.has(itemKey(item, idx))" class="item-notes">
               {{ item.notes }}
             </div>
+            <details
+              v-if="item.product_id && productAnalysisMap.get(item.product_id)"
+              class="item-analysis"
+            >
+              <summary class="item-analysis__toggle">成分警告</summary>
+              <div class="item-analysis__body">
+                <template v-if="productAnalysisMap.get(item.product_id)?.regulatoryAlerts?.length">
+                  <p class="alert-label alert-label--red">🔴 法規警告</p>
+                  <ul>
+                    <li v-for="a in productAnalysisMap.get(item.product_id).regulatoryAlerts" :key="a.inci_name">
+                      {{ a.inci_name }}
+                    </li>
+                  </ul>
+                </template>
+                <template v-if="productAnalysisMap.get(item.product_id)?.skinTypeAlerts?.length">
+                  <p class="alert-label alert-label--yellow">🟡 膚質地雷</p>
+                  <ul>
+                    <li v-for="a in productAnalysisMap.get(item.product_id).skinTypeAlerts" :key="a.inci_name">
+                      {{ a.inci_name }}
+                    </li>
+                  </ul>
+                </template>
+              </div>
+            </details>
           </div>
         </div>
       </div>
@@ -150,7 +198,7 @@ import { ref } from 'vue';
 import type { WeeklyRoutine, RoutineItem } from '~/types/routine';
 import type { ConflictWarning } from '~/utils/ingredientConflicts';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   routine: WeeklyRoutine | null;
   daysOfWeek: string[];
   expandedDayIdx: number;
@@ -158,7 +206,10 @@ const props = defineProps<{
   conflictWarnings?: ConflictWarning[];
   onProductDragStart: Function;
   onProductDrop: Function;
-}>();
+  productAnalysisMap?: Map<string, any>;
+}>(), {
+  productAnalysisMap: () => new Map()
+});
 
 defineEmits<{
   (e: 'update:expandedDayIdx', idx: number): void;
@@ -248,6 +299,14 @@ const getEveningItems = (dayIdx: number) =>
 .btn-lock:hover { opacity: 1; }
 .btn-remove { background: var(--color-red-light); color: var(--color-red); border: none; border-radius: var(--radius-sm); cursor: pointer; padding: 2px 8px; font-weight: 700; font-size: 14px; transition: background 0.2s; }
 .btn-remove:hover { background: #F0D0D0; }
+
+.item-analysis { flex: 0 0 100%; margin-top: var(--space-xs, 4px); }
+.item-analysis__toggle { font-size: 11px; color: var(--color-text-muted); cursor: pointer; }
+.item-analysis__body { font-size: 12px; padding: var(--space-xs, 4px) 0; }
+.alert-label { font-size: 11px; font-weight: 600; margin: 4px 0 2px; }
+.alert-label--red { color: var(--color-critical); }
+.alert-label--yellow { color: var(--color-amber); }
+.item-analysis ul { margin: 0; padding-left: 16px; }
 
 .badge-orphan {
 	font-size: 11px;

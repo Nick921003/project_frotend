@@ -72,6 +72,7 @@
           :conflict-warnings="conflictWarnings"
           :on-product-drag-start="onProductDragStart"
           :on-product-drop="onProductDrop"
+          :product-analysis-map="productAnalysisMap"
           @toggle-item-lock="toggleItemLock"
           @remove-item="removeItem"
         />
@@ -129,6 +130,17 @@ const {
   usageOrderTips,
   loadTempRecommendations,
 } = useRoutineRecommendations(routine, availableProducts, PRODUCT_CATEGORIES, routineId);
+
+// productId → { regulatoryAlerts, skinTypeAlerts } 的快查表
+const productAnalysisMap = computed(() => {
+  const map = new Map<string, any>();
+  for (const p of (routine.value?.all_products || [])) {
+    if (p.id && (p as any).analysis_result?.analysis) {
+      map.set(p.id, (p as any).analysis_result.analysis);
+    }
+  }
+  return map;
+});
 
 const selectedThemeTags = computed(() => {
   if (!routine.value) return [];

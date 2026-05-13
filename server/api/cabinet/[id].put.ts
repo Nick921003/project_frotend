@@ -78,10 +78,21 @@ export default defineEventHandler(async (event) => {
 
   if (error) {
     console.error('[Cabinet Update Error]:', error);
-    throw createError({ 
-      statusCode: 500, 
-      statusMessage: '更新產品失敗: ' + error.message 
+    throw createError({
+      statusCode: 500,
+      statusMessage: '更新產品失敗: ' + error.message
     });
+  }
+
+  // 同步所有排程中此產品的名稱
+  const { error: syncError } = await (supabase as any)
+    .from('routine_items')
+    .update({ product_name })
+    .eq('product_id', productId);
+
+  if (syncError) {
+    // 不中斷主流程，僅記 warning
+    console.warn('[Cabinet PUT] routine_items 改名同步失敗:', syncError.message);
   }
 
   return {

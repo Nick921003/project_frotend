@@ -70,6 +70,7 @@ export interface RoutineItem {
   ingredients?: string[];
   is_recommendation: boolean; // true 表示此為 AI 建議添購
   is_locked?: boolean; // true 表示鎖定，AI 不會調整/刪除
+  is_orphan?: boolean; // true 表示對應產品已從保養品櫃刪除
   recommendation_reason?: string;
   notes?: string;
   created_at?: string;
@@ -139,6 +140,7 @@ export interface CabinetProductItem {
   product_name: string;
   product_category: string;
   raw_ingredients: string;
+  analysis_result?: Record<string, any> | null;
   is_recommendation: boolean;
 }
 

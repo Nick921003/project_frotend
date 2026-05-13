@@ -75,17 +75,29 @@ export default defineEventHandler(async (event) => {
     // 不要因為無法取得產品而失敗
   }
 
+  // 找出哪些 product_id 仍在保養品櫃（用於孤兒標示）
+  const existingProductIds = new Set<string>(
+    (productsData || []).map((p: any) => p.id).filter(Boolean)
+  );
+
+  // 將 is_orphan 旗標附加到 items
+  const itemsWithOrphan = (itemsData || []).map((item: any) => ({
+    ...item,
+    is_orphan: item.product_id != null && !existingProductIds.has(item.product_id)
+  }));
+
   // 組合完整的 routine 對象
   return {
     success: true,
     data: {
       ...routineData,
-      items: itemsData || [],
+      items: itemsWithOrphan,
       all_products: (productsData || []).map((p: any) => ({
         id: p.id,
         product_name: p.product_name,
         product_category: p.product_category,
         raw_ingredients: p.raw_ingredients || '',
+        analysis_result: p.analysis_result || null,
         is_recommendation: false
       }))
     },

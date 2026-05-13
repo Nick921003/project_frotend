@@ -65,6 +65,7 @@
               <div class="item-content">
                 <span class="index">{{ idx + 1 }}</span>
                 <span class="name">{{ item.product_name }}</span>
+                <span v-if="item.is_orphan" class="badge-orphan">產品已刪除</span>
                 <button
                   v-if="item.notes"
                   class="btn-notes"
@@ -113,6 +114,7 @@
               <div class="item-content">
                 <span class="index">{{ idx + 1 }}</span>
                 <span class="name">{{ item.product_name }}</span>
+                <span v-if="item.is_orphan" class="badge-orphan">產品已刪除</span>
                 <button
                   v-if="item.notes"
                   class="btn-notes"
@@ -246,6 +248,16 @@ const getEveningItems = (dayIdx: number) =>
 .btn-lock:hover { opacity: 1; }
 .btn-remove { background: var(--color-red-light); color: var(--color-red); border: none; border-radius: var(--radius-sm); cursor: pointer; padding: 2px 8px; font-weight: 700; font-size: 14px; transition: background 0.2s; }
 .btn-remove:hover { background: #F0D0D0; }
+
+.badge-orphan {
+	font-size: 11px;
+	color: var(--color-critical);
+	border: 1px solid var(--color-critical);
+	border-radius: var(--radius-sm);
+	padding: 1px 6px;
+	margin-left: var(--space-sm);
+	flex-shrink: 0;
+}
 
 @media (max-width: 768px) {
   .section { padding: var(--space-4); }

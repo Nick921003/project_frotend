@@ -168,6 +168,16 @@ IMPORTANT RULES:
 4. Mark recommendation items with is_recommendation: true and explain their benefits in recommendation_reason
 5. Each item must include the product name, category, and detected/relevant ingredients
 6. Target Issues (${preferences.targetIssues.join(', ') || 'general'}) should be prioritized in the routine${preferences.allowRecommendations ? '' : ' using only existing products'}
+7. REQUIRED: Every item MUST have a non-empty "notes" field explaining WHY this product is placed at this step and time. The notes should answer: step order rationale, ingredient layering logic, and any time-of-day restrictions. Write in Traditional Chinese.
+
+NOTES FORMAT RULES:
+- Always follow this pattern: "[時段]第[N]步：[原因]；[限制或補充說明]"
+- Examples:
+  - "早晨第一步：pH 值偏低，需在其他保養前使用以確保成分吸收最佳化"
+  - "早晨第三步：含 SPF，需在保濕後日光前使用；避免晚間使用因含光敏感成分"
+  - "晚間第二步：含 Retinol，夜間修復效果最佳；避免早晨使用因對光線敏感"
+  - "晚間第四步：質地最厚，需最後鎖水；含 Niacinamide 可協助縮小毛孔"
+- Mention: ingredient reasons, layering logic (water→oil, thin→thick), time restrictions (photosensitivity, stability)
 
 RESPONSE FORMAT:
 You MUST respond with ONLY valid JSON (no markdown, no code blocks), with this exact structure:
@@ -185,7 +195,7 @@ You MUST respond with ONLY valid JSON (no markdown, no code blocks), with this e
       "ingredients": ["ingredient1", "ingredient2"],
       "is_recommendation": false,
       "recommendation_reason": null,
-      "notes": "Optional usage notes"
+      "notes": "早晨第一步：清潔面部油脂與髒污，為後續保養打底；pH 偏弱酸有助維持肌膚屏障"
     },
     ...
   ]
@@ -197,7 +207,7 @@ EXAMPLES OF INGREDIENT RECOMMENDATIONS (if allowRecommendations=true):
 - If user lacks hydration boosters: {"product_name": "Hyaluronic Acid Serum", "is_recommendation": true, "recommendation_reason": "強化肌膚保水力，特別適合乾性膚質，改善繃緊感"}
 
 OUTPUT LANGUAGE:
-- Use Traditional Chinese (繁體中文) for all product_name and recommendation_reason fields
+- Use Traditional Chinese (繁體中文) for all product_name, recommendation_reason, and notes fields
 - Make recommendations sound natural and friendly, not mechanical
 - Provide specific usage frequency and benefits, not just generic features
 - Drop excessive technical jargon, keep it relatable
@@ -357,39 +367,52 @@ Now, create the weekly routine as JSON only:
 
   /**
    * 生成成分總結評語（用於 analyze.post.ts 的配方評估）
+   * 回傳 overview（100字整體評價）與 verdict（一句話結論）
    */
   async generateProductSummary(
     ingredients: string[],
     skinType: string
-  ): Promise<string> {
+  ): Promise<{ overview: string; verdict: string }> {
     try {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const { GoogleGenerativeAI, SchemaType } = await import('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(this.config.apiKey);
       const model = genAI.getGenerativeModel({
         model: this.config.model,
-        generationConfig: { temperature: 0.3 }
+        generationConfig: {
+          temperature: 0.3,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: SchemaType.OBJECT,
+            properties: {
+              overview: { type: SchemaType.STRING },
+              verdict: { type: SchemaType.STRING }
+            },
+            required: ['overview', 'verdict']
+          }
+        }
       });
 
       const skinTypeLabel = skinType || '一般膚質 (未提供)';
-      
+
       const summaryPrompt = `
-      你是一位專業的化妝品配方師。請根據以下的保養品 INCI 成分表，以及使用者的膚質，給出一段專業、白話且具有價值的整體評價。
-      
+      你是一位專業的化妝品配方師。請根據以下的保養品 INCI 成分表，以及使用者的膚質，給出評價。
+
       成分表：${ingredients.join(', ')}
       使用者膚質：${skinTypeLabel}
-      
-      嚴格輸出規則：
-      1. 點出這支產品的「核心功效」（如：偏向保濕、抗老、酸類煥膚等）。
-      2. 針對該使用者的膚質，給出「是否推薦」以及「使用建議或潛在風險」。
-      3. 字數限制在 100 字以內，語氣要像專業且溫柔的皮膚科醫生。
-      4. 純文字輸出，不可使用任何 Markdown 標記 (如 ** 或 #)。
+
+      回傳 JSON：
+      - overview：100字以內的整體評價，語氣像專業溫柔的皮膚科醫生，純文字無 Markdown。點出核心功效，給出是否推薦。
+      - verdict：一句話結論（30字以內），格式如「這瓶以保濕為主，適合乾性肌，油性肌效益有限」。
     `;
 
       const result = await model.generateContent(summaryPrompt);
-      const summary = result.response.text();
+      const parsed = JSON.parse(result.response.text());
 
       console.log('[AIService] 生成產品總結');
-      return summary;
+      return {
+        overview: parsed.overview || '',
+        verdict: parsed.verdict || ''
+      };
     } catch (error: any) {
       console.error('[AIService] 生成總結錯誤:', error.message);
       throw new Error(`生成產品評語失敗: ${error.message}`);

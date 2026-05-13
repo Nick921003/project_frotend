@@ -56,7 +56,13 @@
             @keydown.enter.prevent="editProduct(product.id)"
             @keydown.space.prevent="editProduct(product.id)"
           >
-            <td class="product-name">{{ product.product_name }}</td>
+            <td class="product-name">
+              {{ product.product_name }}
+              <span
+                v-if="daysUntilFinish(product.opened_at, product.estimated_finish_days) !== null && daysUntilFinish(product.opened_at, product.estimated_finish_days)! <= 7"
+                class="expiring-text"
+              >快用完</span>
+            </td>
             <td class="product-category">{{ product.product_category }}</td>
             <td>
               <span v-if="product.analysis_result" class="badge badge-sage">✓ 已分析</span>
@@ -122,7 +128,7 @@
                 {{ routine.is_active ? '✓ 啟用' : '○ 停用' }}
               </button>
               <button class="btn-delete" title="刪除此排程" @click.stop="deleteRoutine(routine.id, routine.name)">
-                🗑️
+                刪除
               </button>
             </div>
           </div>
@@ -192,6 +198,15 @@ let limitTimer: ReturnType<typeof setTimeout> | null = null
 
 const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })
+}
+
+// 計算距用完日的天數，null = 無追蹤資料
+const daysUntilFinish = (openedAt: string | null | undefined, finishDays: number | null | undefined): number | null => {
+  if (!openedAt || !finishDays) return null
+  const finish = new Date(openedAt)
+  finish.setDate(finish.getDate() + finishDays)
+  const diff = Math.ceil((finish.getTime() - Date.now()) / 86400000)
+  return diff
 }
 
 const fetchRoutines = async () => {
@@ -408,6 +423,14 @@ const goNextCabinetPage = async () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.expiring-text {
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #C4958A;
+  letter-spacing: 0.02em;
 }
 
 @media (max-width: 640px) {

@@ -442,8 +442,8 @@ onMounted(() => {
 }
 
 .action-btn--save:hover:not(:disabled) {
-  background: #6A8A70;
-  border-color: #6A8A70;
+  background: #7A9870;
+  border-color: #7A9870;
 }
 
 .results-section {

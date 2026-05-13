@@ -14,59 +14,97 @@ export type Database = {
   }
   public: {
     Tables: {
-      cosmetic_regulations: {
+      app_settings: {
         Row: {
-          id: string
-          ingredient_name: string
-          inci_name: string | null
-          cas_number: string | null
-          aliases: string | null
-          color_index_number: string | null
-          regulation_type: 'banned' | 'restricted' | 'preservative' | 'colorant'
-          product_scope: string | null
-          limit_standard: string | null
-          restriction_rules: string | null
-          warning_labels: string | null
-          notes: string | null
-          source_id: string | null
-          created_at: string | null
+          key: string
+          updated_at: string | null
+          value: string
         }
         Insert: {
-          id?: string
-          ingredient_name: string
-          inci_name?: string | null
-          cas_number?: string | null
-          aliases?: string | null
-          color_index_number?: string | null
-          regulation_type: 'banned' | 'restricted' | 'preservative' | 'colorant'
-          product_scope?: string | null
-          limit_standard?: string | null
-          restriction_rules?: string | null
-          warning_labels?: string | null
-          notes?: string | null
-          source_id?: string | null
-          created_at?: string | null
+          key: string
+          updated_at?: string | null
+          value: string
         }
         Update: {
-          id?: string
-          ingredient_name?: string
-          inci_name?: string | null
-          cas_number?: string | null
+          key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
+      cosmetic_regulations: {
+        Row: {
+          aliases: string | null
+          cas_number: string | null
+          color_index_number: string | null
+          created_at: string | null
+          id: string
+          inci_name: string | null
+          ingredient_name: string
+          limit_standard: string | null
+          notes: string | null
+          product_scope: string | null
+          regulation_type: string
+          restriction_rules: string | null
+          source_id: string | null
+          warning_labels: string | null
+        }
+        Insert: {
           aliases?: string | null
+          cas_number?: string | null
           color_index_number?: string | null
-          regulation_type?: 'banned' | 'restricted' | 'preservative' | 'colorant'
-          product_scope?: string | null
-          limit_standard?: string | null
-          restriction_rules?: string | null
-          warning_labels?: string | null
-          notes?: string | null
-          source_id?: string | null
           created_at?: string | null
+          id?: string
+          inci_name?: string | null
+          ingredient_name: string
+          limit_standard?: string | null
+          notes?: string | null
+          product_scope?: string | null
+          regulation_type: string
+          restriction_rules?: string | null
+          source_id?: string | null
+          warning_labels?: string | null
+        }
+        Update: {
+          aliases?: string | null
+          cas_number?: string | null
+          color_index_number?: string | null
+          created_at?: string | null
+          id?: string
+          inci_name?: string | null
+          ingredient_name?: string
+          limit_standard?: string | null
+          notes?: string | null
+          product_scope?: string | null
+          regulation_type?: string
+          restriction_rules?: string | null
+          source_id?: string | null
+          warning_labels?: string | null
+        }
+        Relationships: []
+      }
+      guest_rate_limits: {
+        Row: {
+          count: number
+          date: string
+          ip: string
+        }
+        Insert: {
+          count?: number
+          date?: string
+          ip: string
+        }
+        Update: {
+          count?: number
+          date?: string
+          ip?: string
         }
         Relationships: []
       }
       official_ingredients: {
         Row: {
+          efficacy_tags: string[] | null
+          function_summary: string | null
           id: string
           inci_name: string
           limit_standard: string | null
@@ -74,6 +112,8 @@ export type Database = {
           warning_text: string | null
         }
         Insert: {
+          efficacy_tags?: string[] | null
+          function_summary?: string | null
           id?: string
           inci_name: string
           limit_standard?: string | null
@@ -81,6 +121,8 @@ export type Database = {
           warning_text?: string | null
         }
         Update: {
+          efficacy_tags?: string[] | null
+          function_summary?: string | null
           id?: string
           inci_name?: string
           limit_standard?: string | null
@@ -255,32 +297,44 @@ export type Database = {
         Row: {
           analysis_result: Json | null
           created_at: string | null
+          estimated_finish_days: number | null
           id: string
+          opened_at: string | null
           overview: string | null
           product_category: string | null
           product_name: string
+          purchase_purpose: string | null
           raw_ingredients: Json
           user_id: string | null
+          user_notes: string | null
         }
         Insert: {
           analysis_result?: Json | null
           created_at?: string | null
+          estimated_finish_days?: number | null
           id?: string
+          opened_at?: string | null
           overview?: string | null
           product_category?: string | null
           product_name: string
+          purchase_purpose?: string | null
           raw_ingredients: Json
           user_id?: string | null
+          user_notes?: string | null
         }
         Update: {
           analysis_result?: Json | null
           created_at?: string | null
+          estimated_finish_days?: number | null
           id?: string
+          opened_at?: string | null
           overview?: string | null
           product_category?: string | null
           product_name?: string
+          purchase_purpose?: string | null
           raw_ingredients?: Json
           user_id?: string | null
+          user_notes?: string | null
         }
         Relationships: [
           {

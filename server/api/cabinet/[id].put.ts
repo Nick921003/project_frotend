@@ -24,15 +24,32 @@ export default defineEventHandler(async (event) => {
 
   // 3. 取得請求體
   const body = await readBody(event);
-  const { product_name, product_category } = body;
-  const normalizedCategory = normalizeProductCategory(product_category);
+  const {
+    product_name,
+    product_category,
+    opened_at,
+    estimated_finish_days,
+    purchase_purpose,
+    user_notes
+  } = body;
 
-  if (!product_name || !product_category) {
-    throw createError({ 
-      statusCode: 400, 
-      statusMessage: '產品名稱和分類不能為空' 
-    });
+  // 至少需要一個欄位
+  const hasBasicFields = product_name || product_category;
+  const hasTrackingFields = opened_at !== undefined || estimated_finish_days !== undefined ||
+    purchase_purpose !== undefined || user_notes !== undefined;
+
+  if (!hasBasicFields && !hasTrackingFields) {
+    throw createError({ statusCode: 400, statusMessage: '請提供至少一個要更新的欄位' });
   }
+
+  // 組裝 update object（只包含有提供的欄位）
+  const updateData: Record<string, any> = {};
+  if (product_name) updateData.product_name = product_name;
+  if (product_category) updateData.product_category = normalizeProductCategory(product_category);
+  if (opened_at !== undefined) updateData.opened_at = opened_at;
+  if (estimated_finish_days !== undefined) updateData.estimated_finish_days = estimated_finish_days;
+  if (purchase_purpose !== undefined) updateData.purchase_purpose = purchase_purpose;
+  if (user_notes !== undefined) updateData.user_notes = user_notes;
 
   // 4. 取得 Supabase 客戶端
   const supabase = await serverSupabaseClient(event);
@@ -55,10 +72,7 @@ export default defineEventHandler(async (event) => {
   // 6. 更新產品
   const { data, error } = await supabase
     .from('user_cabinet')
-    .update({
-      product_name,
-      product_category: normalizedCategory
-    })
+    .update(updateData)
     .eq('id', productId)
     .select();
 

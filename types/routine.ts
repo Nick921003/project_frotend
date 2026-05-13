@@ -47,6 +47,11 @@ export interface CabinetProduct {
   overview: string | null;
   created_at: string;
   updated_at: string;
+  // 使用追蹤欄位
+  opened_at: string | null;
+  estimated_finish_days: number | null;
+  purchase_purpose: string | null;
+  user_notes: string | null;
 }
 
 /**

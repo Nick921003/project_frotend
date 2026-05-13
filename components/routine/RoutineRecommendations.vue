@@ -4,7 +4,7 @@
     <div v-if="unifiedRecommendations.length > 0" class="recommendations-section">
       <div class="recommendations-header">
         <div class="header-left">
-          <h2>🎯 AI 的智慧推薦</h2>
+          <h2>AI 推薦補充</h2>
           <p class="header-subtitle">同一筆顯示「品類 + 推薦成分」，不自動加入排程</p>
         </div>
         <div class="recommendation-tools">
@@ -25,7 +25,6 @@
       <div v-show="showRecommendations" class="recommendation-list">
         <div class="recommendation-card">
           <div class="card-header">
-            <div class="icon">🧪</div>
             <div class="ingredient-name">品類與推薦成分（不自動加入）</div>
           </div>
           <div class="card-footer">
@@ -41,7 +40,7 @@
       </div>
 
       <div v-show="showRecommendations" class="recommendations-info">
-        <p>💡 建議僅供參考，不會自動加入排程；新增產品後請由您手動點擊「AI 重新排成」。</p>
+        <p>建議僅供參考，不會自動加入排程；新增產品後請手動點擊「AI 重新排成」。</p>
       </div>
       <div v-show="!showRecommendations" class="recommendations-collapsed-note">
         <p>AI 推薦已收起，點擊「展開推薦」可再次查看內容。</p>
@@ -93,18 +92,18 @@ const showRecommendations = ref(true);
 
 /* Recommendations Section */
 .recommendations-section {
-  background: white;
+  background: var(--color-surface);
   border-radius: var(--radius-lg);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border-light);
   overflow: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-sm);
   margin-bottom: var(--space-4);
 }
 
 .recommendations-header {
   padding: var(--space-4) var(--space-5);
-  background: linear-gradient(to right, #f8fafc, #f1f5f9);
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--color-surface-alt);
+  border-bottom: 1px solid var(--color-border-light);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -113,14 +112,15 @@ const showRecommendations = ref(true);
 }
 
 .header-left h2 {
-  font-size: 18px;
-  color: #1e293b;
+  font-size: 16px;
+  color: var(--color-text-primary);
   margin: 0 0 4px 0;
+  font-family: var(--font-heading);
 }
 
 .header-subtitle {
   font-size: 13px;
-  color: #64748b;
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
@@ -137,33 +137,35 @@ const showRecommendations = ref(true);
 }
 
 .count-badge {
-  background: #3b82f6;
-  color: white;
+  background: var(--color-accent);
+  color: #fff;
   font-size: 12px;
   font-weight: 700;
   padding: 2px 8px;
-  border-radius: 12px;
+  border-radius: var(--radius-pill);
 }
 
 .count-label {
   font-size: 13px;
-  color: #475569;
+  color: var(--color-text-secondary);
 }
 
 .recommendation-toggle {
-  background: white;
-  border: 1px solid #cbd5e1;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   padding: 6px 12px;
   border-radius: var(--radius-md);
   font-size: 13px;
-  color: #475569;
+  color: var(--color-text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
+  font-family: var(--font-body);
 }
 
 .recommendation-toggle:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
+  background: var(--color-surface-alt);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .recommendation-list {
@@ -171,28 +173,21 @@ const showRecommendations = ref(true);
 }
 
 .recommendation-card {
-  border: 1px solid #f1f5f9;
+  border: 1px solid var(--color-border-light);
   border-radius: var(--radius-md);
   overflow: hidden;
 }
 
 .card-header {
-  background: #f8fafc;
+  background: var(--color-surface-alt);
   padding: 10px 15px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.card-header .icon {
-  font-size: 16px;
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .ingredient-name {
   font-weight: 600;
-  color: #334155;
-  font-size: 14px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
 }
 
 .card-footer {
@@ -204,7 +199,7 @@ const showRecommendations = ref(true);
   justify-content: space-between;
   align-items: center;
   padding: 10px 15px;
-  border-bottom: 1px solid #f8fafc;
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .recommendation-row:last-child {
@@ -213,46 +208,46 @@ const showRecommendations = ref(true);
 
 .rec-text {
   font-size: 14px;
-  color: #475569;
+  color: var(--color-text-secondary);
   line-height: 1.5;
 }
 
 .add-link-btn {
   background: none;
-  border: 1px solid #3b82f6;
-  color: #3b82f6;
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  font-family: var(--font-body);
 }
 
 .add-link-btn:hover {
-  background: #eff6ff;
+  background: var(--color-accent-light);
 }
 
 .recommendations-info {
   padding: 10px 20px;
-  background: #fdf2f8;
-  border-top: 1px solid #fbcfe8;
+  background: var(--color-surface-alt);
+  border-top: 1px solid var(--color-border-light);
   font-size: 12px;
-  color: #be185d;
+  color: var(--color-text-secondary);
 }
 
 .recommendations-collapsed-note {
   padding: 15px 20px;
   font-size: 13px;
-  color: #64748b;
+  color: var(--color-text-muted);
   text-align: center;
-  font-style: italic;
 }
 
 /* Usage Tips Section */
 .usage-tips-section {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
+  background: var(--color-sage-light);
+  border: 1px solid #C0D8C5;
   border-radius: var(--radius-lg);
   padding: var(--space-4) var(--space-5);
   margin-bottom: var(--space-4);
@@ -266,19 +261,20 @@ const showRecommendations = ref(true);
 }
 
 .sufficient-badge {
-  background: #22c55e;
-  color: white;
+  background: var(--color-sage);
+  color: #fff;
   font-size: 10px;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 4px;
-  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.05em;
 }
 
 .usage-tips-header h3 {
-  font-size: 16px;
-  color: #166534;
+  font-size: 15px;
+  color: var(--color-text-primary);
   margin: 0;
+  font-family: var(--font-heading);
 }
 
 .usage-steps {
@@ -290,15 +286,15 @@ const showRecommendations = ref(true);
 .usage-step {
   display: flex;
   gap: 12px;
-  background: white;
+  background: var(--color-surface);
   padding: 12px;
   border-radius: var(--radius-md);
-  border: 1px solid #dcfce7;
+  border: 1px solid #C8DEC8;
 }
 
 .step-number {
-  background: #22c55e;
-  color: white;
+  background: var(--color-sage);
+  color: #fff;
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -318,23 +314,38 @@ const showRecommendations = ref(true);
 
 .step-cat {
   font-size: 14px;
-  color: #166534;
+  color: var(--color-text-primary);
+  font-weight: 600;
 }
 
 .step-timing {
   font-size: 11px;
-  color: #15803d;
-  background: #f0fdf4;
+  color: var(--color-sage);
+  background: var(--color-sage-light);
   padding: 1px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   width: fit-content;
+  border: 1px solid #C0D8C5;
 }
 
 .step-note {
   font-size: 12px;
-  color: #4b5563;
+  color: var(--color-text-secondary);
   margin-top: 4px;
   line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .recommendations-header {
+    padding: var(--space-3) var(--space-4);
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .header-left h2 { font-size: 14px; }
+  .header-subtitle { font-size: 12px; }
+  .count-label { font-size: 11px; }
+  .recommendation-toggle { padding: 3px 10px; font-size: 11px; }
+  .recommendation-list { padding: var(--space-3) var(--space-4); }
 }
 
 @media (max-width: 640px) {

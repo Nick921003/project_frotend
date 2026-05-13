@@ -16,7 +16,7 @@
         class="mode-btn ai-regenerate"
         :disabled="savingOrder"
       >
-        🤖 AI 重新排成
+        AI 重新排成
       </button>
     </div>
 
@@ -26,21 +26,20 @@
       <p>正在載入排程...</p>
     </div>
     <div v-if="pageError" class="error-banner">
-      ❌ {{ pageError }}
+      {{ pageError }}
     </div>
 
     <div v-if="!pageLoading && routine" class="content">
       <!-- 空排程提示 (高優先級) -->
       <div v-if="routine.items.length === 0 && !routine.created_by_ai" class="empty-routine-alert">
-        <div class="alert-icon">📋</div>
         <div class="alert-content">
-          <h2>您的排程還是空的</h2>
+          <h2>排程還是空的</h2>
           <p class="alert-message">
             {{ routine._empty_reason === 'no_products' ? '您目前還沒有添加任何保養品。請先前往保養品櫃添加一些產品。' : '您可以從左側庫存拖拽產品到日程表。' }}
           </p>
           <div class="alert-actions">
-            <button @click="goToCabinet" class="btn-primary">🧴 前往保養品櫃</button>
-            <button @click="goBack" class="btn-secondary">← 返回上一頁</button>
+            <button @click="goToCabinet" class="btn-primary">前往保養品櫃</button>
+            <button @click="goBack" class="btn-secondary">返回上一頁</button>
           </div>
         </div>
       </div>
@@ -70,6 +69,7 @@
           :routine="routine"
           :days-of-week="daysOfWeek"
           :selected-theme-tags="selectedThemeTags"
+          :conflict-warnings="conflictWarnings"
           :on-product-drag-start="onProductDragStart"
           :on-product-drop="onProductDrop"
           @toggle-item-lock="toggleItemLock"
@@ -82,7 +82,7 @@
         <button @click="saveChanges" class="btn-save" :disabled="savingOrder">
           {{ savingOrder ? '保存中...' : '保存排序' }}
         </button>
-        <button @click="resetSchedule" class="btn-reset">🔄 重設</button>
+        <button @click="resetSchedule" class="btn-reset">重設</button>
         <span v-if="saveMessage" class="save-message" :class="{ success: saveSuccess }">
           {{ saveMessage }}
         </span>
@@ -145,7 +145,7 @@ const getItemsForTimeslot = (dayOfWeek: number, timeOfDay: 'morning' | 'evening'
   return routine.value.items.filter(item => item.day_of_week === dayOfWeek && item.time_of_day === timeOfDay);
 };
 
-const { onInventoryDragStart, onProductDragStart, onProductDrop, quickAdd } = useRoutineDragDrop(
+const { onInventoryDragStart, onProductDragStart, onProductDrop, quickAdd, conflictWarnings } = useRoutineDragDrop(
   routine, expandedDayIdx, daysOfWeek, saveMessage, saveSuccess, getItemsForTimeslot
 );
 
@@ -313,30 +313,27 @@ onMounted(async () => {
 
 .error-banner {
   padding: var(--space-3) var(--space-4);
-  background: #fee2e2;
-  border: 1px solid #fecaca;
+  background: var(--color-red-light);
+  border: 1px solid #E8C0C0;
   border-radius: 8px;
-  color: #b91c1c;
+  color: var(--color-red);
   margin-bottom: var(--space-5);
 }
 
 .empty-routine-alert {
   background: var(--color-accent-light);
-  border-radius: 12px;
-  padding: var(--space-8);
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8) var(--space-8);
   margin-bottom: var(--space-6);
 }
 
-.alert-icon { font-size: 48px; }
-.alert-content h2 { margin: 0 0 8px; font-size: 20px; }
+.alert-content h2 { margin: 0 0 var(--space-2); font-size: 18px; font-family: var(--font-heading); }
 .alert-message { color: var(--color-text-secondary); margin-bottom: 16px; }
 .alert-actions { display: flex; gap: 12px; }
 
 .btn-primary { padding: 8px 16px; background: var(--color-accent); color: #fff; border: none; border-radius: 6px; cursor: pointer; }
-.btn-secondary { padding: 8px 16px; background: #fff; color: var(--color-accent); border: 1px solid var(--color-accent); border-radius: 6px; cursor: pointer; }
+.btn-secondary { padding: 8px 16px; background: var(--color-surface); color: var(--color-accent); border: 1px solid var(--color-accent); border-radius: 6px; cursor: pointer; }
 
 .main-grid {
   display: grid;
@@ -348,7 +345,7 @@ onMounted(async () => {
 
 .footer {
   padding: var(--space-5) var(--space-6);
-  background: #fff;
+  background: var(--color-surface);
   border: 1px solid var(--color-border-light);
   border-radius: 12px;
   display: flex;
@@ -369,15 +366,16 @@ onMounted(async () => {
   transition: background 0.2s;
 }
 
-.btn-save:hover:not(:disabled) { background: #6A8A70; }
+.btn-save:hover:not(:disabled) { background: #7A9870; }
 .btn-save:disabled { background: var(--color-text-muted); cursor: not-allowed; }
 
 .btn-reset {
   padding: 10px 24px;
-  background: #fff;
-  border: 1px solid #ddd;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   cursor: pointer;
+  color: var(--color-text-secondary);
 }
 
 .save-message { font-size: 14px; font-weight: 600; color: var(--color-red); }
@@ -388,6 +386,7 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
+  .schedule-page { padding: var(--space-4) var(--space-3); }
   .footer { flex-direction: column; text-align: center; }
 }
 </style>

@@ -57,7 +57,7 @@ export default defineEventHandler(async (event) => {
   // 5. 驗證產品是否存在且屬於該使用者
   const { data: existingProduct, error: fetchError } = await supabase
     .from('user_cabinet')
-    .select('id, user_id')
+    .select('id, user_id, product_name')
     .eq('id', productId)
     .single();
 
@@ -85,14 +85,26 @@ export default defineEventHandler(async (event) => {
   }
 
   // 同步所有排程中此產品的名稱
-  const { error: syncError } = await (supabase as any)
-    .from('routine_items')
-    .update({ product_name })
-    .eq('product_id', productId);
+  if (product_name && product_name !== existingProduct.product_name) {
+    // 方法一：透過 product_id 同步（有設 product_id 的 items）
+    const { error: syncError1 } = await (supabase as any)
+      .from('routine_items')
+      .update({ product_name })
+      .eq('product_id', productId);
+    if (syncError1) {
+      console.warn('[Cabinet PUT] routine_items 改名同步(by product_id)失敗:', syncError1.message);
+    }
 
-  if (syncError) {
-    // 不中斷主流程，僅記 warning
-    console.warn('[Cabinet PUT] routine_items 改名同步失敗:', syncError.message);
+    // 方法二：透過舊名稱同步（product_id 為 null 的 items）
+    const { error: syncError2 } = await (supabase as any)
+      .from('routine_items')
+      .update({ product_name })
+      .eq('user_id', userId)
+      .eq('product_name', existingProduct.product_name)
+      .is('product_id', null);
+    if (syncError2) {
+      console.warn('[Cabinet PUT] routine_items 改名同步(by name)失敗:', syncError2.message);
+    }
   }
 
   return {

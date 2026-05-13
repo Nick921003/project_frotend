@@ -112,7 +112,7 @@
               v-if="item.product_id && productAnalysisMap.get(item.product_id)"
               class="item-analysis"
             >
-              <summary class="item-analysis__toggle">成分警告</summary>
+              <summary class="item-analysis__toggle">成分分析</summary>
               <div class="item-analysis__body">
                 <template v-if="productAnalysisMap.get(item.product_id)?.regulatoryAlerts?.length">
                   <p class="alert-label alert-label--red">🔴 法規警告</p>
@@ -129,6 +129,9 @@
                       {{ a.inci_name }}
                     </li>
                   </ul>
+                </template>
+                <template v-if="!productAnalysisMap.get(item.product_id)?.regulatoryAlerts?.length && !productAnalysisMap.get(item.product_id)?.skinTypeAlerts?.length">
+                  <p class="alert-label alert-label--safe">✅ 無警告成分</p>
                 </template>
               </div>
             </details>
@@ -185,7 +188,7 @@
               v-if="item.product_id && productAnalysisMap.get(item.product_id)"
               class="item-analysis"
             >
-              <summary class="item-analysis__toggle">成分警告</summary>
+              <summary class="item-analysis__toggle">成分分析</summary>
               <div class="item-analysis__body">
                 <template v-if="productAnalysisMap.get(item.product_id)?.regulatoryAlerts?.length">
                   <p class="alert-label alert-label--red">🔴 法規警告</p>
@@ -202,6 +205,9 @@
                       {{ a.inci_name }}
                     </li>
                   </ul>
+                </template>
+                <template v-if="!productAnalysisMap.get(item.product_id)?.regulatoryAlerts?.length && !productAnalysisMap.get(item.product_id)?.skinTypeAlerts?.length">
+                  <p class="alert-label alert-label--safe">✅ 無警告成分</p>
                 </template>
               </div>
             </details>
@@ -339,6 +345,7 @@ const getEveningItems = (dayIdx: number) =>
 .alert-label { font-size: 11px; font-weight: 600; margin: 4px 0 2px; }
 .alert-label--red { color: var(--color-critical); }
 .alert-label--yellow { color: var(--color-amber); }
+.alert-label--safe { color: var(--color-sage); }
 .item-analysis ul { margin: 0; padding-left: 16px; }
 
 .badge-orphan {

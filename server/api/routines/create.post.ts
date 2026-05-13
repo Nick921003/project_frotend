@@ -200,6 +200,11 @@ export default defineEventHandler(async (event) => {
       .filter(Boolean)
   );
 
+  // product_name → user_cabinet.id，批次 lookup 用
+  const nameToId = new Map<string, string>(
+    products.map(p => [normalizeName(p.product_name), p.id])
+  );
+
   const recommendationMap = new Map<string, RoutineRecommendation>();
   for (const item of weeklyRoutine.items) {
     const productName = String(item.product_name || '').trim();
@@ -307,7 +312,8 @@ export default defineEventHandler(async (event) => {
       ingredients: item.ingredients || [],
       is_recommendation: item.is_recommendation,
       recommendation_reason: item.recommendation_reason || null,
-      notes: item.notes || null
+      notes: item.notes || null,
+      product_id: item.is_recommendation ? null : (nameToId.get(normalizeName(item.product_name)) ?? null)
     }));
 
     if (itemsToInsert.length > 0) {

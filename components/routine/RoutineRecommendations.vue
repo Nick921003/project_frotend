@@ -32,6 +32,7 @@
               <div class="rec-text">
                 <strong>{{ rec.category }}</strong>
                 <span>：{{ rec.ingredientsText }}</span>
+                <span v-if="rec.reason" class="rec-reason">{{ rec.reason }}</span>
               </div>
               <button class="add-link-btn" @click="$emit('go-add-product', rec.category)">新增產品</button>
             </div>
@@ -210,6 +211,14 @@ const showRecommendations = ref(true);
   font-size: 14px;
   color: var(--color-text-secondary);
   line-height: 1.5;
+}
+
+.rec-reason {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  margin-top: 2px;
 }
 
 .add-link-btn {

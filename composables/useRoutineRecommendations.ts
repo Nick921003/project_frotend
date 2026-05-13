@@ -31,6 +31,7 @@ export interface UnifiedRecommendation {
   productName: string;
   ingredients: string[];
   ingredientsText: string;
+  reason?: string;
 }
 
 export interface UsageOrderTip {
@@ -66,7 +67,7 @@ export function useRoutineRecommendations(
   });
 
   const unifiedRecommendations = computed(() => {
-    const map = new Map<string, { productName: string; ingredients: Set<string> }>();
+    const map = new Map<string, { productName: string; ingredients: Set<string>; reason?: string }>();
 
     for (const category of missingCategories.value) {
       if (!map.has(category)) {
@@ -83,6 +84,10 @@ export function useRoutineRecommendations(
       }
 
       const target = map.get(category)!;
+      // 保留第一個有意義的推薦理由
+      if (!target.reason && item.recommendation_reason) {
+        target.reason = String(item.recommendation_reason).trim() || undefined;
+      }
       for (const ingredient of Array.isArray(item.ingredients) ? item.ingredients : []) {
         const value = String(ingredient || '').trim();
         if (value) target.ingredients.add(value);
@@ -99,6 +104,7 @@ export function useRoutineRecommendations(
         productName: value.productName,
         ingredients,
         ingredientsText: ingredients.length > 0 ? `推薦成分 ${ingredients.join('、')}` : '建議補齊此品類',
+        reason: value.reason,
       };
     });
   });

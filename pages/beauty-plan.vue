@@ -462,6 +462,7 @@ const goNextCabinetPage = async () => {
 	padding: 1px 6px;
 	margin-left: 6px;
 	vertical-align: middle;
+	white-space: nowrap;
 }
 
 .product-date {

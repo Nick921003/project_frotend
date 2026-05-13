@@ -123,7 +123,7 @@ export default defineEventHandler(async (event) => {
   // 7. 批量更新現有項目
   // ==================
   for (const update of itemsToUpdate) {
-    const { id, day_of_week, time_of_day, sequence_order, product_name, product_category, ingredients, is_recommendation, is_locked, recommendation_reason, notes } = update;
+    const { id, day_of_week, time_of_day, sequence_order, product_name, product_category, ingredients, is_recommendation, is_locked, recommendation_reason, notes, product_id } = update;
 
     if (!id || day_of_week === undefined || !time_of_day) {
       errors.push(`無效的更新項目：${JSON.stringify(update)}`);
@@ -145,6 +145,7 @@ export default defineEventHandler(async (event) => {
         sequence_order,
         product_name,
         product_category,
+        product_id: product_id ?? null,
         ingredients: ingredients || [],
         is_recommendation: is_recommendation || false,
         is_locked: is_locked === true,
@@ -170,6 +171,7 @@ export default defineEventHandler(async (event) => {
       user_id: userId,
       product_name: item.product_name,
       product_category: item.product_category,
+      product_id: item.product_id ?? null,
       day_of_week: item.day_of_week,
       time_of_day: item.time_of_day,
       sequence_order: item.sequence_order,

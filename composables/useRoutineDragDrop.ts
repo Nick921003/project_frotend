@@ -67,6 +67,7 @@ export function useRoutineDragDrop(
       const newItem: RoutineItem = {
         product_name: (draggedProduct as CabinetProductItem).product_name,
         product_category: (draggedProduct as CabinetProductItem).product_category,
+        product_id: (draggedProduct as CabinetProductItem).id,
         day_of_week: dayIdx,
         time_of_day: timeOfDay,
         sequence_order: getItemsForTimeslot(dayIdx, timeOfDay).length,
@@ -149,6 +150,7 @@ export function useRoutineDragDrop(
     const newItem: RoutineItem = {
       product_name: product.product_name,
       product_category: product.product_category,
+      product_id: product.id,
       day_of_week: dayIdx,
       time_of_day: timeOfDay,
       sequence_order: getItemsForTimeslot(dayIdx, timeOfDay).length,

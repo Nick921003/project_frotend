@@ -1,161 +1,173 @@
 <template>
   <div class="page-container">
+    <div class="analyze-layout">
+      <!-- 左欄：操作區（固定不滾動） -->
+      <div class="analyze-left">
 
-    <!-- 頂部狀態列 -->
-    <div class="status-bar">
-      <span v-if="user" class="status-bar__text">
-        會員模式 · 膚質：<strong>{{ selectedSkinType }}</strong>
-      </span>
-      <span v-else class="status-bar__text">訪客</span>
+        <!-- 頂部狀態列 -->
+        <div class="status-bar">
+          <span v-if="user" class="status-bar__text">
+            會員模式 · 膚質：<strong>{{ selectedSkinType }}</strong>
+          </span>
+          <span v-else class="status-bar__text">訪客</span>
 
-      <button v-if="!user" class="btn btn-sm btn-ghost" @click="navigateTo('/login')">
-        前往登入
-      </button>
-    </div>
+          <button v-if="!user" class="btn btn-sm btn-ghost" @click="navigateTo('/login')">
+            前往登入
+          </button>
+        </div>
 
-    <h2 class="page-heading">保養品成分分析</h2>
+        <h2 class="page-heading">保養品成分分析</h2>
 
-    <!-- 步驟 1：膚質 -->
-    <div class="card step-card">
-      <label class="form-label step-label">步驟 1 · 確認膚質</label>
-      <select v-model="selectedSkinType" :disabled="!!user" class="form-input">
-        <option value="oily">油性肌膚 — 容易出油、長痘</option>
-        <option value="dry">乾性肌膚 — 容易緊繃、脫屑</option>
-        <option value="combination">混合性肌膚 — T字油、兩頰乾</option>
-        <option value="sensitive">敏感性肌膚 — 容易泛紅、刺痛</option>
-        <option value="normal">中性肌膚 — 油水分泌平衡</option>
-      </select>
-      <p v-if="user" class="hint-text">已自動套用您的會員膚質設定</p>
-    </div>
+        <!-- 步驟 1：膚質 -->
+        <div class="card step-card">
+          <label class="form-label step-label">步驟 1 · 確認膚質</label>
+          <select v-model="selectedSkinType" :disabled="!!user" class="form-input">
+            <option value="oily">油性肌膚 — 容易出油、長痘</option>
+            <option value="dry">乾性肌膚 — 容易緊繃、脫屑</option>
+            <option value="combination">混合性肌膚 — T字油、兩頰乾</option>
+            <option value="sensitive">敏感性肌膚 — 容易泛紅、刺痛</option>
+            <option value="normal">中性肌膚 — 油水分泌平衡</option>
+          </select>
+          <p v-if="user" class="hint-text">已自動套用您的會員膚質設定</p>
+        </div>
 
-    <!-- 步驟 2：上傳 -->
-    <div class="card step-card upload-card">
-      <label class="form-label step-label">步驟 2 · 上傳成分表照片</label>
+        <!-- 步驟 2：上傳 -->
+        <div class="card step-card upload-card">
+          <label class="form-label step-label">步驟 2 · 上傳成分表照片</label>
 
-      <div class="upload-fields">
-        <input
-          v-model="productName"
-          type="text"
-          placeholder="產品名稱（可不填，系統會自動命名）"
-          :disabled="isLoading"
-          class="form-input"
-        />
-        <select v-model="productCategory" :disabled="isLoading" class="form-input">
-          <option v-for="cat in categoryOptions" :key="cat" :value="cat">{{ cat }}</option>
-        </select>
+          <div class="upload-fields">
+            <input
+              v-model="productName"
+              type="text"
+              placeholder="產品名稱（可不填，系統會自動命名）"
+              :disabled="isLoading"
+              class="form-input"
+            />
+            <select v-model="productCategory" :disabled="isLoading" class="form-input">
+              <option v-for="cat in categoryOptions" :key="cat" :value="cat">{{ cat }}</option>
+            </select>
+          </div>
+
+          <div class="upload-row">
+            <label class="btn btn-secondary btn-sm upload-label" :class="{ 'disabled': isLoading }">
+              📷 選擇照片（可多選）
+              <input
+                type="file"
+                accept="image/jpeg, image/png, image/webp"
+                multiple
+                :disabled="isLoading"
+                style="display: none;"
+                @change="handleImageUpload"
+              />
+            </label>
+            <span v-if="imageBase64Array.length > 0" class="hint-text">
+              已選擇 {{ imageBase64Array.length }} 張
+            </span>
+          </div>
+
+          <div v-if="imageBase64Array.length > 0" class="preview-grid">
+            <div v-for="(src, idx) in imageBase64Array" :key="idx" class="preview-item">
+              <img :src="src" alt="預覽" class="preview-img" />
+              <button class="preview-remove" :disabled="isLoading" @click="removeImage(idx)">×</button>
+            </div>
+          </div>
+
+          <p v-if="fromRoutine" class="hint-text hint-text--accent">
+            來自排程頁：分析並加入保養品櫃後，將自動返回原排程頁。
+          </p>
+        </div>
+
+        <!-- 送出按鈕 -->
+        <button
+          class="btn btn-primary btn-lg action-btn"
+          :disabled="imageBase64Array.length === 0 || isLoading"
+          @click="analyzeIngredients"
+        >
+          {{ isLoading ? '🤖 AI 分析中...' : '開始分析成分' }}
+        </button>
+
+        <!-- 加入保養品櫃 -->
+        <button
+          v-if="analysisReady && user && !saveMsg"
+          class="btn btn-lg action-btn action-btn--save"
+          :disabled="isSaving"
+          @click="saveToCabinet"
+        >
+          {{ isSaving ? '儲存中...' : '✅ 加入保養品櫃' }}
+        </button>
+
+        <div v-if="saveMsg" class="status-box status-success">{{ saveMsg }}</div>
+        <div v-if="errorMsg" class="status-box status-error">❌ {{ errorMsg }}</div>
+
       </div>
 
-      <div class="upload-row">
-        <label class="btn btn-secondary btn-sm upload-label" :class="{ 'disabled': isLoading }">
-          📷 選擇照片（可多選）
-          <input
-            type="file"
-            accept="image/jpeg, image/png, image/webp"
-            multiple
-            :disabled="isLoading"
-            style="display: none;"
-            @change="handleImageUpload"
-          />
-        </label>
-        <span v-if="imageBase64Array.length > 0" class="hint-text">
-          已選擇 {{ imageBase64Array.length }} 張
-        </span>
-      </div>
+      <!-- 右欄：結果區（可滾動） -->
+      <div class="analyze-right">
+        <div v-if="!result?.data?.analysis" class="result-placeholder">
+          <p>上傳成分表照片後，分析結果會顯示在這裡</p>
+        </div>
 
-      <div v-if="imageBase64Array.length > 0" class="preview-grid">
-        <div v-for="(src, idx) in imageBase64Array" :key="idx" class="preview-item">
-          <img :src="src" alt="預覽" class="preview-img" />
-          <button class="preview-remove" :disabled="isLoading" @click="removeImage(idx)">×</button>
+        <div v-else class="results-section">
+          <h3 class="section-title">分析報告</h3>
+
+          <div
+            v-if="result.data.analysis.regulatoryAlerts.length > 0"
+            class="alert-block alert-red"
+          >
+            <h4>🔴 法規警告（限量 / 禁用成分）</h4>
+            <ul>
+              <li v-for="item in result.data.analysis.regulatoryAlerts" :key="item.inci_name">
+                <strong>{{ item.inci_name }}</strong> —
+                <span>{{ item.warning || item.limit }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <div
+            v-if="result.data.analysis.limitAlerts?.length > 0"
+            class="alert-block alert-orange"
+          >
+            <h4>🟠 含限量成分（濃度未知，無法確認是否超標）</h4>
+            <ul>
+              <li v-for="item in result.data.analysis.limitAlerts" :key="item.inci_name">
+                <strong>{{ item.inci_name }}</strong> — 法規限量：{{ item.limit }}
+              </li>
+            </ul>
+          </div>
+
+          <div
+            v-if="result.data.analysis.skinTypeAlerts.length > 0"
+            class="alert-block alert-yellow"
+          >
+            <h4>🟡 膚質地雷（針對 {{ selectedSkinType }}）</h4>
+            <ul>
+              <li v-for="item in result.data.analysis.skinTypeAlerts" :key="item.inci_name">
+                <strong>{{ item.inci_name }}</strong> — {{ item.risk_description }}
+              </li>
+            </ul>
+          </div>
+
+          <div class="alert-block alert-green">
+            <h4>🟢 一般成分（未觸發警報）</h4>
+            <div class="safe-chips">
+              <span
+                v-for="item in result.data.analysis.safeList"
+                :key="typeof item === 'string' ? item : item.inci_name"
+                class="badge badge-muted"
+                :title="typeof item === 'object' && item.function_summary ? item.function_summary : undefined"
+              >{{ typeof item === 'string' ? item : item.inci_name }}</span>
+              <span v-if="result.data.analysis.safeList.length === 0" class="hint-text">無</span>
+            </div>
+          </div>
+
+          <div v-if="result.data.overallSummary" class="alert-block alert-gold">
+            <h4>— AI 配方師總評</h4>
+            <p style="margin: 0; line-height: 1.7;">{{ result.data.overallSummary }}</p>
+          </div>
         </div>
       </div>
 
-      <p v-if="fromRoutine" class="hint-text hint-text--accent">
-        來自排程頁：分析並加入保養品櫃後，將自動返回原排程頁。
-      </p>
     </div>
-
-    <!-- 送出按鈕 -->
-    <button
-      class="btn btn-primary btn-lg action-btn"
-      :disabled="imageBase64Array.length === 0 || isLoading"
-      @click="analyzeIngredients"
-    >
-      {{ isLoading ? '🤖 AI 分析中...' : '開始分析成分' }}
-    </button>
-
-    <!-- 加入保養品櫃 -->
-    <button
-      v-if="analysisReady && user && !saveMsg"
-      class="btn btn-lg action-btn action-btn--save"
-      :disabled="isSaving"
-      @click="saveToCabinet"
-    >
-      {{ isSaving ? '儲存中...' : '✅ 加入保養品櫃' }}
-    </button>
-
-    <div v-if="saveMsg" class="status-box status-success">{{ saveMsg }}</div>
-    <div v-if="errorMsg" class="status-box status-error">❌ {{ errorMsg }}</div>
-
-    <!-- 分析結果 -->
-    <div v-if="result?.data?.analysis" class="results-section">
-      <h3 class="section-title">分析報告</h3>
-
-      <div
-        v-if="result.data.analysis.regulatoryAlerts.length > 0"
-        class="alert-block alert-red"
-      >
-        <h4>🔴 法規警告（限量 / 禁用成分）</h4>
-        <ul>
-          <li v-for="item in result.data.analysis.regulatoryAlerts" :key="item.inci_name">
-            <strong>{{ item.inci_name }}</strong> —
-            <span>{{ item.warning || item.limit }}</span>
-          </li>
-        </ul>
-      </div>
-
-      <div
-        v-if="result.data.analysis.limitAlerts?.length > 0"
-        class="alert-block alert-orange"
-      >
-        <h4>🟠 含限量成分（濃度未知，無法確認是否超標）</h4>
-        <ul>
-          <li v-for="item in result.data.analysis.limitAlerts" :key="item.inci_name">
-            <strong>{{ item.inci_name }}</strong> — 法規限量：{{ item.limit }}
-          </li>
-        </ul>
-      </div>
-
-      <div
-        v-if="result.data.analysis.skinTypeAlerts.length > 0"
-        class="alert-block alert-yellow"
-      >
-        <h4>🟡 膚質地雷（針對 {{ selectedSkinType }}）</h4>
-        <ul>
-          <li v-for="item in result.data.analysis.skinTypeAlerts" :key="item.inci_name">
-            <strong>{{ item.inci_name }}</strong> — {{ item.risk_description }}
-          </li>
-        </ul>
-      </div>
-
-      <div class="alert-block alert-green">
-        <h4>🟢 一般成分（未觸發警報）</h4>
-        <div class="safe-chips">
-          <span
-            v-for="item in result.data.analysis.safeList"
-            :key="typeof item === 'string' ? item : item.inci_name"
-            class="badge badge-muted"
-            :title="typeof item === 'object' && item.function_summary ? item.function_summary : undefined"
-          >{{ typeof item === 'string' ? item : item.inci_name }}</span>
-          <span v-if="result.data.analysis.safeList.length === 0" class="hint-text">無</span>
-        </div>
-      </div>
-
-      <div v-if="result.data.overallSummary" class="alert-block alert-gold">
-        <h4>— AI 配方師總評</h4>
-        <p style="margin: 0; line-height: 1.7;">{{ result.data.overallSummary }}</p>
-      </div>
-    </div>
-
   </div>
 </template>
 
@@ -321,6 +333,46 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 雙欄佈局 */
+.analyze-layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.analyze-left {
+  position: sticky;
+  top: var(--space-4);
+}
+
+.analyze-right {
+  min-height: 400px;
+}
+
+.result-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  border: 1px dashed var(--color-warm-dark);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  text-align: center;
+  padding: var(--space-6);
+}
+
+/* 手機版退回單欄 */
+@media (max-width: 768px) {
+  .analyze-layout {
+    grid-template-columns: 1fr;
+  }
+  .analyze-left {
+    position: static;
+  }
+}
+
 .status-bar {
   display: flex;
   align-items: center;

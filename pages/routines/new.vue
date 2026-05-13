@@ -276,14 +276,9 @@ const createWithAI = async () => {
 
       if (!response.success) throw new Error(response.message || '更新排程失敗')
 
-      const recommendations = Array.isArray(response.data?.recommendations) ? response.data!.recommendations! : []
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem(`routine-ai-recommendations:${targetRoutineId.value}`, JSON.stringify(recommendations))
-      }
-
-      loadingMessage.value = `✅ 已產生 ${recommendations.length} 項 AI 推薦`
+      loadingMessage.value = '✅ 排程已更新，正在跳轉...'
       setTimeout(() => {
-        router.push({ path: `/routines/${targetRoutineId.value}`, query: { regenResult: 'recommended', recCount: String(recommendations.length) } })
+        router.push({ path: `/routines/${targetRoutineId.value}` })
         loading.value = false
       }, 500)
       return
@@ -292,13 +287,9 @@ const createWithAI = async () => {
     await generateWithAI(preferences.value)
 
     if (routine.value && routine.value.routine_id) {
-      const createdRecs = Array.isArray(routine.value.recommendations) ? routine.value.recommendations : []
-      if (typeof window !== 'undefined' && createdRecs.length > 0) {
-        sessionStorage.setItem(`routine-ai-recommendations:${routine.value.routine_id}`, JSON.stringify(createdRecs))
-      }
       loadingMessage.value = '✅ 排程已生成，正在跳轉...'
       setTimeout(() => {
-        router.push({ path: `/routines/${routine.value!.routine_id}`, query: createdRecs.length > 0 ? { regenResult: 'recommended', recCount: String(createdRecs.length) } : {} })
+        router.push({ path: `/routines/${routine.value!.routine_id}` })
         loading.value = false
       }, 500)
     } else {

@@ -437,6 +437,57 @@ ${knownContext}${unknownContext}
     }
   }
 
+  /**
+   * 根據使用者膚況與現有保養品，生成功效導向補充推薦
+   */
+  async generateEfficacyRecommendations(
+    profile: UserProfileData,
+    products: CabinetProduct[],
+    targetIssues: string[]
+  ): Promise<Array<{ issue: string; category: string; suggestedIngredients: string[]; reason: string }>> {
+    const existingSummary = products.map(p => {
+      const ings = this.tryParseIngredients(p.raw_ingredients).slice(0, 8).join(', ');
+      return `- ${p.product_name}（${p.product_category}）: ${ings || '成分未知'}`;
+    }).join('\n');
+
+    const prompt = `你是一位專業化妝品配方師。以下是使用者資料與現有保養品：
+
+膚質：${profile.base_skin_type}
+困擾：${targetIssues.length > 0 ? targetIssues.join('、') : profile.issues || '一般保養'}
+現有產品與主要成分：
+${existingSummary || '（無產品）'}
+
+請分析現有產品的成分覆蓋，找出「功效缺口」，針對使用者的困擾給出 2~4 條補充建議。
+即使某品類已有產品，也可以推薦含不同功效成分的同品類產品。
+
+以 JSON 陣列回傳，每筆格式如下：
+{
+  "issue": "對應的困擾（如：控油抗痘）",
+  "category": "建議的品類（如：精華液、眼霜）",
+  "suggestedIngredients": ["成分1", "成分2"],
+  "reason": "為什麼需要補充，現有產品缺了什麼（繁體中文，1~2句）"
+}
+
+只回傳 JSON 陣列，不要其他文字。`;
+
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(this.config.apiKey);
+      const model = genAI.getGenerativeModel({
+        model: this.config.model,
+        generationConfig: { temperature: 0.4 }
+      });
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) return [];
+      return JSON.parse(jsonMatch[0]);
+    } catch (e: any) {
+      console.warn('[AIService] generateEfficacyRecommendations 失敗:', e.message);
+      return [];
+    }
+  }
+
 }
 
 /**

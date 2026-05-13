@@ -9,14 +9,10 @@
       @message="handleMessage"
     />
 
-    <!-- AI 重新排成按鈕 -->
+    <!-- AI 推薦按鈕 -->
     <div class="mode-toggle">
-      <button
-        @click="goToAIPreferences"
-        class="mode-btn ai-regenerate"
-        :disabled="savingOrder"
-      >
-        AI 重新排成
+      <button class="mode-btn ai-recs" @click="goToAIRecs">
+        ✨ AI 推薦
       </button>
     </div>
 
@@ -46,8 +42,8 @@
 
       <!-- AI 推薦與順序建議 (Component D) -->
       <RoutineRecommendations
-        :unified-recommendations="unifiedRecommendations"
-        :is-products-sufficient="isProductsSufficient"
+        :efficacy-recs="efficacyRecs"
+        :recs-loading="recsLoading"
         :usage-order-tips="usageOrderTips"
         :routine-id="routineId"
         @go-add-product="goToAddProduct"
@@ -126,11 +122,10 @@ const categoryOptions = PRODUCT_CATEGORIES;
 // 計算屬性
 // ==================
 const {
-  unifiedRecommendations,
-  isProductsSufficient,
+  efficacyRecs,
+  recsLoading,
   usageOrderTips,
-  loadTempRecommendations,
-} = useRoutineRecommendations(routine, availableProducts, PRODUCT_CATEGORIES, routineId);
+} = useRoutineRecommendations(routine, availableProducts, routineId);
 
 // productId → { regulatoryAlerts, skinTypeAlerts } 的快查表
 const productAnalysisMap = computed(() => {
@@ -257,7 +252,7 @@ const resetSchedule = async () => {
 // ==================
 // 導覽方法
 // ==================
-const goToAIPreferences = () => router.push({ path: '/routines/new', query: { action: 'regenerate', routineId } });
+const goToAIRecs = () => router.push({ path: '/routines/new', query: { action: 'regenerate', routineId } });
 const goToAddProduct = (cat: string) => router.push({ path: '/', query: { from: 'routine', routineId, category: cat } });
 const goToCabinet = () => router.push({ path: '/', query: { from: 'routine', routineId, source: 'empty-routine' } });
 const goBack = () => router.back();
@@ -267,7 +262,6 @@ const goBack = () => router.back();
 // ==================
 onMounted(async () => {
   pageLoading.value = true;
-  if (route.query.regenResult === 'recommended') loadTempRecommendations();
   await loadRoutineById();
   pageLoading.value = false;
 });
@@ -285,6 +279,7 @@ onMounted(async () => {
   margin-bottom: var(--space-6);
   display: flex;
   justify-content: center;
+  gap: var(--space-3);
 }
 
 .mode-btn {
@@ -297,6 +292,12 @@ onMounted(async () => {
   color: #fff;
   transition: background 0.2s;
 }
+
+.mode-btn.ai-recs {
+  background: var(--color-sage);
+}
+
+.mode-btn.ai-recs:hover:not(:disabled) { background: #7a9c8f; }
 
 .mode-btn:hover:not(:disabled) { background: var(--color-accent-hover); }
 .mode-btn:disabled { opacity: 0.6; cursor: not-allowed; }

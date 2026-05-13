@@ -1,5 +1,5 @@
 import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server';
-import type { UserProfileData, CabinetProduct, WeeklyRoutine, GeminiRoutineResponse, RoutineItem, RoutinePreferences, RoutineRecommendation } from '~/types/routine';
+import type { UserProfileData, CabinetProduct, WeeklyRoutine, GeminiRoutineResponse, RoutineItem, RoutinePreferences } from '~/types/routine';
 import { getAIService } from '~/server/services/aiService';
 
 /**
@@ -205,29 +205,6 @@ export default defineEventHandler(async (event) => {
     products.map(p => [normalizeName(p.product_name), p.id])
   );
 
-  const recommendationMap = new Map<string, RoutineRecommendation>();
-  for (const item of weeklyRoutine.items) {
-    const productName = String(item.product_name || '').trim();
-    if (!productName) continue;
-
-    const inCabinet = cabinetProductNames.has(normalizeName(productName));
-    const shouldRecommend = item.is_recommendation === true || !inCabinet;
-    if (!shouldRecommend) continue;
-
-    const category = String(item.product_category || '其他').trim() || '其他';
-    const key = `${category}::${normalizeName(productName)}`;
-    if (recommendationMap.has(key)) continue;
-
-    recommendationMap.set(key, {
-      product_name: productName,
-      product_category: category,
-      ingredients: Array.isArray(item.ingredients) ? item.ingredients : [],
-      recommendation_reason: item.recommendation_reason || '可作為補強品項'
-    });
-  }
-
-  const recommendations = Array.from(recommendationMap.values());
-
   const scheduleItems = weeklyRoutine.items
     .filter(item => cabinetProductNames.has(normalizeName(item.product_name)))
     .map(item => ({
@@ -241,9 +218,9 @@ export default defineEventHandler(async (event) => {
     weeklyRoutine.items = scheduleItems;
   }
 
-  weeklyRoutine.recommendations = recommendations;
+  weeklyRoutine.recommendations = [];
 
-  console.log(`[Routines Create] 生成完成，排程項目數=${weeklyRoutine.items.length}，推薦數=${recommendations.length}`);
+  console.log(`[Routines Create] 生成完成，排程項目數=${weeklyRoutine.items.length}`);
 
   // ==================
   // 8.5 檢查並禁用現有的 active routine

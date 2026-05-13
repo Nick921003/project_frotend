@@ -252,7 +252,7 @@ const resetSchedule = async () => {
 // ==================
 // 導覽方法
 // ==================
-const goToAIRecs = () => router.push({ path: '/routines/new', query: { action: 'regenerate', routineId } });
+const goToAIRecs = () => router.push({ path: '/routines/new', query: { action: 'recs', routineId } });
 const goToAddProduct = (cat: string) => router.push({ path: '/', query: { from: 'routine', routineId, category: cat } });
 const goToCabinet = () => router.push({ path: '/', query: { from: 'routine', routineId, source: 'empty-routine' } });
 const goBack = () => router.back();

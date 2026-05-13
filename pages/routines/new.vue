@@ -9,9 +9,9 @@
 
     <div class="page-container">
       <div class="page-header">
-        <h1 class="page-heading">{{ isRegenerateFlow ? 'AI 重新排成' : '建立新排程' }}</h1>
+        <h1 class="page-heading">{{ isRecsFlow ? 'AI 成分推薦' : isRegenerateFlow ? 'AI 重新排成' : '建立新排程' }}</h1>
         <p class="subtitle">
-          {{ isRegenerateFlow ? '先設定偏好，再更新目前這份排程' : '選擇方式來建立您的每週保養規劃' }}
+          {{ isRecsFlow ? '分析您現有保養品的成分覆蓋，找出功效缺口，給出補充建議' : isRegenerateFlow ? '先設定偏好，再更新目前這份排程' : '選擇方式來建立您的每週保養規劃' }}
         </p>
       </div>
 
@@ -164,6 +164,59 @@
         </div>
       </div>
 
+      <!-- 步驟二：困擾選擇（AI 成分推薦流程） -->
+      <div v-if="!loading && step === 'recs-concerns'" class="preferences-wrap">
+        <button class="btn btn-secondary btn-sm back-btn" @click="router.back()">← 返回排程</button>
+        <div class="card pref-card">
+          <h2 class="section-title" style="font-size: 18px;">選擇您想改善的困擾</h2>
+          <p class="pref-desc">AI 會根據您現有保養品的全部成分，找出功效缺口，給出 2–4 條針對性証品建議</p>
+          <div class="form-group">
+            <label class="form-label">肥膚困擾（多選）</label>
+            <div class="checkbox-group">
+              <label v-for="issue in availableIssues" :key="issue" class="checkbox-pill">
+                <input type="checkbox" :value="issue" v-model="recsIssues" />
+                <span>{{ issue }}</span>
+              </label>
+            </div>
+          </div>
+          <p class="selection-hint">已選：{{ recsIssues.length }} 項</p>
+          <div v-if="recsError" class="alert-block alert-red" style="margin-bottom: var(--space-4);">
+            ❌ {{ recsError }}
+          </div>
+          <div class="pref-actions">
+            <button class="btn btn-primary btn-lg" :disabled="recsLoading || recsIssues.length === 0" @click="loadEfficacyRecs">
+              {{ recsLoading ? '🔍 AI 分析中...' : '🔍 開始分析' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 步驟三：推薦結果（AI 成分推薦流程） -->
+      <div v-if="!loading && step === 'recs-results'" class="preferences-wrap">
+        <button class="btn btn-secondary btn-sm back-btn" @click="step = 'recs-concerns'">← 重新選擇</button>
+
+        <div v-if="efficacyRecs.length === 0" class="card pref-card" style="text-align: center; padding: var(--space-8);">
+          <div style="font-size: 2rem; margin-bottom: var(--space-3)">🎉</div>
+          <p style="color: var(--color-text-secondary);">您的保養品成分已相當完整，當前困擾已有充分的成分支持！</p>
+        </div>
+
+        <div v-for="rec in efficacyRecs" :key="rec.issue" class="card recs-card">
+          <div class="recs-card-header">
+            <span class="recs-issue-badge">{{ rec.issue }}</span>
+            <span class="recs-category">建議補充：{{ rec.category }}</span>
+          </div>
+          <p class="recs-reason">{{ rec.reason }}</p>
+          <div class="recs-ingredients">
+            <span v-for="ing in rec.suggestedIngredients" :key="ing" class="ing-chip">{{ ing }}</span>
+          </div>
+        </div>
+
+        <div class="recs-back-actions">
+          <button class="btn btn-ghost" @click="router.back()">← 返回排程</button>
+          <button class="btn btn-secondary" @click="step = 'recs-concerns'">重新分析</button>
+        </div>
+      </div>
+
       <!-- 說明區段 -->
       <div v-if="step === 'mode'" class="card info-card">
         <h3 class="section-title" style="font-size: 16px;">如何選擇？</h3>
@@ -192,11 +245,12 @@ const router = useRouter()
 const route = useRoute()
 const { routine, loading, error, generateWithAI, generateDefault, getDefaultPreferences } = useCreateRoutine()
 
-const step = ref<'mode' | 'preferences'>('mode')
+const step = ref<'mode' | 'preferences' | 'recs-concerns' | 'recs-results'>('mode')
 const loadingMessage = ref('')
 const preferences = ref<RoutinePreferences>(getDefaultPreferences())
 
 const isRegenerateFlow = computed(() => route.query.action === 'regenerate')
+const isRecsFlow = computed(() => route.query.action === 'recs')
 const targetRoutineId = computed(() => {
   const value = route.query.routineId
   return typeof value === 'string' ? value : ''
@@ -335,8 +389,34 @@ const createManual = async () => {
 
 const clearError = () => { error.value = null }
 
+// AI 成分推薦流程
+const recsIssues = ref<string[]>([])
+const efficacyRecs = ref<Array<{ issue: string; category: string; suggestedIngredients: string[]; reason: string }>>([])
+const recsLoading = ref(false)
+const recsError = ref('')
+
+const loadEfficacyRecs = async () => {
+  if (!targetRoutineId.value) return
+  recsLoading.value = true
+  recsError.value = ''
+  try {
+    const res = await $fetch<{ success: boolean; data: any[] }>(
+      `/api/routines/${targetRoutineId.value}/efficacy-recs`,
+      { method: 'POST', body: { targetIssues: recsIssues.value } }
+    )
+    if (res.success) efficacyRecs.value = res.data
+    step.value = 'recs-results'
+  } catch (e: any) {
+    recsError.value = e.data?.message || e.message || '分析失敗，請稍後再試'
+  } finally {
+    recsLoading.value = false
+  }
+}
+
 onMounted(() => {
-  if (isRegenerateFlow.value && targetRoutineId.value) {
+  if (isRecsFlow.value && targetRoutineId.value) {
+    step.value = 'recs-concerns'
+  } else if (isRegenerateFlow.value && targetRoutineId.value) {
     step.value = 'preferences'
     preferences.value = getDefaultPreferences()
   }
@@ -603,6 +683,66 @@ onMounted(() => {
 
 .pref-actions { margin-top: var(--space-4); }
 .pref-actions .btn { width: 100%; }
+
+/* AI 成分推薦結果 */
+.recs-card {
+  margin-bottom: var(--space-4);
+  padding: var(--space-5);
+}
+
+.recs-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.recs-issue-badge {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.recs-category {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.recs-reason {
+  font-size: 14px;
+  color: var(--color-text-primary);
+  line-height: 1.7;
+  margin: 0 0 var(--space-3);
+}
+
+.recs-ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ing-chip {
+  background: var(--color-sage-light, #e8f0ed);
+  color: var(--color-sage);
+  border: 1px solid var(--color-sage);
+  border-radius: var(--radius-pill);
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.recs-back-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  margin-top: var(--space-4);
+}
 
 /* Info card */
 .info-card {

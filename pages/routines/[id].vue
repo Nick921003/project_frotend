@@ -9,13 +9,6 @@
       @message="handleMessage"
     />
 
-    <!-- AI 推薦按鈕 -->
-    <div class="mode-toggle">
-      <button class="mode-btn ai-recs" @click="goToAIRecs">
-        ✨ AI 推薦
-      </button>
-    </div>
-
     <!-- 載入與錯誤狀態 -->
     <div v-if="pageLoading" class="loading-overlay">
       <div class="spinner"></div>
@@ -40,13 +33,14 @@
         </div>
       </div>
 
-      <!-- AI 推薦與順序建議 (Component D) -->
+    <!-- AI 推薦與順序建議 (Component D) -->
       <RoutineRecommendations
         :efficacy-recs="efficacyRecs"
         :recs-loading="recsLoading"
         :usage-order-tips="usageOrderTips"
         :routine-id="routineId"
         @go-add-product="goToAddProduct"
+        @go-to-ai-recs="goToAIRecs"
       />
 
       <!-- 主要排程區域 -->
@@ -125,7 +119,7 @@ const {
   efficacyRecs,
   recsLoading,
   usageOrderTips,
-} = useRoutineRecommendations(routine, availableProducts, routineId);
+} = useRoutineRecommendations(routine, availableProducts, routineId)
 
 // productId → { regulatoryAlerts, skinTypeAlerts } 的快查表
 const productAnalysisMap = computed(() => {
@@ -263,6 +257,17 @@ const goBack = () => router.back();
 onMounted(async () => {
   pageLoading.value = true;
   await loadRoutineById();
+
+  // 從 sessionStorage 讀取上次 AI 推薦結果
+  const stored = sessionStorage.getItem(`efficacyRecs_${routineId}`)
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored)
+      if (Array.isArray(parsed)) efficacyRecs.value = parsed
+    } catch {}
+    sessionStorage.removeItem(`efficacyRecs_${routineId}`)
+  }
+
   pageLoading.value = false;
 });
 </script>

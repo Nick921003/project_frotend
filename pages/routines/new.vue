@@ -1,18 +1,12 @@
 <template>
   <div class="new-routine-wrap">
 
-    <!-- 載入遮罩 -->
-    <div v-if="loading" class="loading-overlay">
-      <div class="spinner"></div>
-      <p class="loading-msg">{{ loadingMessage }}</p>
-    </div>
+    <!-- 載入遮罩移除（此頁不再有長時間 loading） -->
 
     <div class="page-container">
       <div class="page-header">
-        <h1 class="page-heading">{{ isRecsFlow ? 'AI 成分推薦' : isRegenerateFlow ? 'AI 重新排成' : '建立新排程' }}</h1>
-        <p class="subtitle">
-          {{ isRecsFlow ? '分析您現有保養品的成分覆蓋，找出功效缺口，給出補充建議' : isRegenerateFlow ? '先設定偏好，再更新目前這份排程' : '選擇方式來建立您的每週保養規劃' }}
-        </p>
+        <h1 class="page-heading">AI 成分推薦</h1>
+        <p class="subtitle">分析您現有保養品的成分覆蓋，找出功效缺口，給出補充建議</p>
       </div>
 
       <!-- 錯誤提示 -->
@@ -21,178 +15,65 @@
         <button class="close-btn" @click="clearError">✕</button>
       </div>
 
-      <!-- 步驟一：模式選擇 -->
-      <div v-if="!loading && step === 'mode'" class="cards-grid">
-        <!-- AI 卡片 -->
-        <div
-          class="mode-card mode-card--ai"
-          role="button"
-          tabindex="0"
-          :aria-disabled="loading"
-          @click="!loading && selectAIMode()"
-          @keydown.enter.prevent="!loading && selectAIMode()"
-          @keydown.space.prevent="!loading && selectAIMode()"
-        >
-          <div class="mode-card__header mode-card__header--ai">
-            <div class="mode-icon">🤖</div>
-            <h2>AI 自動排程</h2>
-          </div>
-          <div class="mode-card__body">
-            <p class="mode-desc">根據您的膚質、年齡、肌膚問題和現有產品，AI 會自動設計最適合的週保養規劃。</p>
-            <ul class="mode-features">
-              <li>智能分析您的肌膚需求</li>
-              <li>📊 最大化利用現有產品</li>
-              <li>💡 提供產品添購建議</li>
-              <li>⚡ 節省規劃時間</li>
-            </ul>
-          </div>
-          <button class="btn btn-primary mode-btn" :disabled="loading" @click.stop="selectAIMode">
-            下一步：配置偏好
-          </button>
-        </div>
-
-        <!-- 手動卡片 -->
-        <div
-          class="mode-card mode-card--manual"
-          role="button"
-          tabindex="0"
-          :aria-disabled="loading"
-          @click="!loading && createManual()"
-          @keydown.enter.prevent="!loading && createManual()"
-          @keydown.space.prevent="!loading && createManual()"
-        >
-          <div class="mode-card__header mode-card__header--manual">
-            <div class="mode-icon">✋</div>
-            <h2>手動建立</h2>
-          </div>
-          <div class="mode-card__body">
-            <p class="mode-desc">自由組合您的保養品，手動安排每週保養排程。完全掌控您的保養計劃。</p>
-            <ul class="mode-features">
-              <li>🎨 自由客製化排程</li>
-              <li>🔧 隨時調整順序</li>
-              <li>👥 完全自主控制</li>
-              <li>⏰ 按需求修改時間</li>
-            </ul>
-          </div>
-          <button class="btn btn-ghost mode-btn" :disabled="loading" @click.stop="createManual">
-            {{ loading ? '準備中...' : '手動建立' }}
-          </button>
-        </div>
-      </div>
-
-      <!-- 步驟二：AI 偏好配置 -->
-      <div v-if="!loading && step === 'preferences'" class="preferences-wrap">
-        <button class="btn btn-secondary btn-sm back-btn" @click="backToMode">← 返回選擇</button>
-
-        <div class="card pref-card">
-          <h2 class="section-title" style="font-size: 18px;">配置排程偏好</h2>
-          <p class="pref-desc">自訂您希望的保養風格和優先順序</p>
-
-          <div class="form-group">
-            <label class="form-label">保養複雜度</label>
-            <div class="option-cards">
-              <label
-                v-for="opt in complexityOptions"
-                :key="opt.value"
-                class="option-card"
-                :class="{ 'option-card--selected': preferences.complexity === opt.value }"
-              >
-                <input
-                  class="native-radio"
-                  type="radio"
-                  name="complexity"
-                  :value="opt.value"
-                  v-model="preferences.complexity"
-                />
-                <div class="option-main">
-                  <div class="option-icon">{{ opt.icon }}</div>
-                  <div class="option-label">{{ opt.label }}</div>
-                  <div class="option-desc-text">{{ opt.description }}</div>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">針對的肌膚問題（多選）</label>
-            <div class="checkbox-group">
-              <label v-for="issue in availableIssues" :key="issue" class="checkbox-pill">
-                <input type="checkbox" :value="issue" v-model="preferences.targetIssues" />
-                <span>{{ issue }}</span>
-              </label>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">優先順序</label>
-            <div class="option-cards">
-              <label
-                v-for="opt in priorityOptions"
-                :key="opt.value"
-                class="option-card"
-                :class="{ 'option-card--selected': preferences.priority === opt.value }"
-              >
-                <input
-                  class="native-radio"
-                  type="radio"
-                  name="priority"
-                  :value="opt.value"
-                  v-model="preferences.priority"
-                />
-                <div class="option-main">
-                  <div class="option-icon">{{ opt.icon }}</div>
-                  <div class="option-label">{{ opt.label }}</div>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <p class="selection-hint">已選肌膚問題：{{ preferences.targetIssues.length }} 項</p>
-
-          <div class="form-group">
-            <label class="checkbox-pill">
-              <input type="checkbox" v-model="preferences.allowRecommendations" />
-              <span>允許 AI 推薦新產品（當現有產品不足時）</span>
-            </label>
-          </div>
-
-          <div class="pref-actions">
-            <button class="btn btn-primary btn-lg" @click="createWithAI">
-              {{ isRegenerateFlow ? '🤖 用此配置更新目前排程' : '🤖 用此配置生成排程' }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 步驟二：困擾選擇（AI 成分推薦流程） -->
-      <div v-if="!loading && step === 'recs-concerns'" class="preferences-wrap">
+      <!-- 困擾與品類選擇 -->
+      <div v-if="step === 'recs-concerns'" class="preferences-wrap">
         <button class="btn btn-secondary btn-sm back-btn" @click="router.back()">← 返回排程</button>
         <div class="card pref-card">
-          <h2 class="section-title" style="font-size: 18px;">選擇您想改善的困擾</h2>
-          <p class="pref-desc">AI 會根據您現有保養品的全部成分，找出功效缺口，給出 2–4 條針對性証品建議</p>
+          <h2 class="section-title" style="font-size: 18px;">🔍 AI 成分推薦</h2>
+          <p class="pref-desc">AI 會根據您的<strong>肌質、性別</strong>與現有保養品成分，找出功效缺口，給出 2–4 條針對性証品建議</p>
+
+          <!-- 是否包含個人困擾 toggle -->
+          <div class="toggle-row">
+            <label class="toggle-switch">
+              <input type="checkbox" v-model="useProfileIssues" />
+              <span class="toggle-track"></span>
+            </label>
+            <div class="toggle-info">
+              <span class="toggle-label">包含個人資料中的困擾</span>
+              <span class="toggle-hint">
+                {{ useProfileIssues ? '會合並下方手選困擾一起分析' : '僅使用下方手選的困擾，若不選則分析全部' }}
+              </span>
+            </div>
+          </div>
+
           <div class="form-group">
-            <label class="form-label">肥膚困擾（多選）</label>
+            <label class="form-label">肌膚困擾（多選）</label>
             <div class="checkbox-group">
-              <label v-for="issue in availableIssues" :key="issue" class="checkbox-pill">
+              <label v-for="issue in availableIssues" :key="issue" class="checkbox-pill"
+                :class="{ 'checkbox-pill--selected': recsIssues.includes(issue) }">
                 <input type="checkbox" :value="issue" v-model="recsIssues" />
                 <span>{{ issue }}</span>
               </label>
             </div>
           </div>
-          <p class="selection-hint">已選：{{ recsIssues.length }} 項</p>
+
+          <div class="form-group">
+            <label class="form-label">想要推薦的品類（多選，不選則分析全部）</label>
+            <div class="checkbox-group">
+              <label v-for="cat in recommendableCategories" :key="cat" class="checkbox-pill"
+                :class="{ 'checkbox-pill--selected': recsCategories.includes(cat) }">
+                <input type="checkbox" :value="cat" v-model="recsCategories" />
+                <span>{{ cat }}</span>
+              </label>
+            </div>
+            <p class="selection-hint" style="margin-top: var(--space-2);">
+              {{ recsCategories.length === 0 ? '未指定：將分析全部可推薦品類' : `已選 ${recsCategories.length} 個品類` }}
+            </p>
+          </div>
+
           <div v-if="recsError" class="alert-block alert-red" style="margin-bottom: var(--space-4);">
             ❌ {{ recsError }}
           </div>
           <div class="pref-actions">
-            <button class="btn btn-primary btn-lg" :disabled="recsLoading || recsIssues.length === 0" @click="loadEfficacyRecs">
+            <button class="btn btn-primary btn-lg" :disabled="recsLoading" @click="loadEfficacyRecs">
               {{ recsLoading ? '🔍 AI 分析中...' : '🔍 開始分析' }}
             </button>
           </div>
         </div>
       </div>
 
-      <!-- 步驟三：推薦結果（AI 成分推薦流程） -->
-      <div v-if="!loading && step === 'recs-results'" class="preferences-wrap">
+      <!-- 推薦結果 -->
+      <div v-if="step === 'recs-results'" class="preferences-wrap">
         <button class="btn btn-secondary btn-sm back-btn" @click="step = 'recs-concerns'">← 重新選擇</button>
 
         <div v-if="efficacyRecs.length === 0" class="card pref-card" style="text-align: center; padding: var(--space-8);">
@@ -204,6 +85,7 @@
           <div class="recs-card-header">
             <span class="recs-issue-badge">{{ rec.issue }}</span>
             <span class="recs-category">建議補充：{{ rec.category }}</span>
+            <button class="btn-add-product" @click="goAddProduct(rec.category)">+ 去新增</button>
           </div>
           <p class="recs-reason">{{ rec.reason }}</p>
           <div class="recs-ingredients">
@@ -214,23 +96,11 @@
         <div class="recs-back-actions">
           <button class="btn btn-ghost" @click="router.back()">← 返回排程</button>
           <button class="btn btn-secondary" @click="step = 'recs-concerns'">重新分析</button>
+          <button class="btn btn-primary" @click="confirmAndReturn">✅ 加入推薦並返回排程</button>
         </div>
       </div>
 
-      <!-- 說明區段 -->
-      <div v-if="step === 'mode'" class="card info-card">
-        <h3 class="section-title" style="font-size: 16px;">如何選擇？</h3>
-        <div class="info-grid">
-          <div class="info-item info-item--ai">
-            <strong>建議使用 AI 自動排程</strong>
-            <p>如果您希望快速得到專業的保養建議，或不確定該如何安排保養順序。</p>
-          </div>
-          <div class="info-item info-item--manual">
-            <strong>推薦手動建立</strong>
-            <p>如果您已有清晰的保養理念，想要完全自主控制每個細節。</p>
-          </div>
-        </div>
-      </div>
+      <!-- 說明區段已移除 -->
     </div>
   </div>
 </template>
@@ -238,159 +108,29 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useCreateRoutine } from '~/composables/useCreateRoutine'
-import type { RoutinePreferences } from '~/types/routine'
+import { PRODUCT_CATEGORIES } from '~/utils/productCategories'
 
 const router = useRouter()
 const route = useRoute()
-const { routine, loading, error, generateWithAI, generateDefault, getDefaultPreferences } = useCreateRoutine()
 
-const step = ref<'mode' | 'preferences' | 'recs-concerns' | 'recs-results'>('mode')
-const loadingMessage = ref('')
-const preferences = ref<RoutinePreferences>(getDefaultPreferences())
+const step = ref<'recs-concerns' | 'recs-results'>('recs-concerns')
 
-const isRegenerateFlow = computed(() => route.query.action === 'regenerate')
 const isRecsFlow = computed(() => route.query.action === 'recs')
 const targetRoutineId = computed(() => {
   const value = route.query.routineId
   return typeof value === 'string' ? value : ''
 })
-const MAX_ROUTINES = 3
-const AI_REGENERATE_TIMEOUT_MS = 180000
 
-const complexityOptions = [
-  { value: 'minimal', label: '精簡版', icon: '🚀', description: '快速簡潔' },
-  { value: 'standard', label: '標準版', icon: '⭐', description: '推薦方案' },
-  { value: 'comprehensive', label: '完整版', icon: '💎', description: '深層呵護' }
-]
+// 可推薦品類（排除洗臉/防曬/其他）
+const recommendableCategories = PRODUCT_CATEGORIES.filter(c => c !== '洗臉產品' && c !== '防曬' && c !== '其他')
 
 const availableIssues = ['痘痘', '粉刺', '敏感', '暗沉', '細紋', '乾燥', '出油', '黑眼圈']
 
-const priorityOptions = [
-  { value: 'speed', label: '快速', icon: '⚡', description: '節省時間' },
-  { value: 'effectiveness', label: '有效性', icon: '🎯', description: '效果第一' },
-  { value: 'affordability', label: '經濟', icon: '💰', description: '節省成本' }
-]
-
-const redirectToLimitNotice = () => {
-  router.push({ path: '/beauty-plan', query: { limit: '1', max: String(MAX_ROUTINES) } })
-}
-
-const checkRoutineLimit = async () => {
-  const response = await $fetch<{ success: boolean; data: any[] }>('/api/routines/list')
-  const count = Array.isArray(response?.data) ? response.data.length : 0
-  return count >= MAX_ROUTINES
-}
-
-const ensureCanCreateRoutine = async (): Promise<boolean> => {
-  try {
-    const isAtLimit = await checkRoutineLimit()
-    if (isAtLimit) { redirectToLimitNotice(); return false }
-    return true
-  } catch {
-    return true
-  }
-}
-
-const selectAIMode = async () => {
-  if (loading.value) return
-  loading.value = true
-  loadingMessage.value = '⏳ 檢查排程數量...'
-  const canCreate = await ensureCanCreateRoutine()
-  loading.value = false
-  if (!canCreate) return
-  preferences.value = getDefaultPreferences()
-  step.value = 'preferences'
-}
-
-const backToMode = () => { step.value = 'mode' }
-
-const createWithAI = async () => {
-  if (loading.value) return
-
-  if (!isRegenerateFlow.value) {
-    const canCreate = await ensureCanCreateRoutine()
-    if (!canCreate) return
-  }
-
-  loading.value = true
-  loadingMessage.value = isRegenerateFlow.value
-    ? '🤖 AI 正在更新目前排程（可能需要 1~3 分鐘）...'
-    : '🤖 AI 正在分析您的肌膚資料並生成排程...'
-
-  try {
-    if (isRegenerateFlow.value && targetRoutineId.value) {
-      const response = await $fetch<{
-        success: boolean; changed: boolean; changed_count: number;
-        threshold: number; message: string;
-        data?: { recommendations?: Array<{ product_name: string; product_category?: string; ingredients?: string[]; recommendation_reason?: string }> }
-      }>(`/api/routines/${targetRoutineId.value}/regenerate`, {
-        method: 'POST', body: { preferences: preferences.value }, timeout: AI_REGENERATE_TIMEOUT_MS
-      })
-
-      if (!response.success) throw new Error(response.message || '更新排程失敗')
-
-      loadingMessage.value = '✅ 排程已更新，正在跳轉...'
-      setTimeout(() => {
-        router.push({ path: `/routines/${targetRoutineId.value}` })
-        loading.value = false
-      }, 500)
-      return
-    }
-
-    await generateWithAI(preferences.value)
-
-    if (routine.value && routine.value.routine_id) {
-      loadingMessage.value = '✅ 排程已生成，正在跳轉...'
-      setTimeout(() => {
-        router.push({ path: `/routines/${routine.value!.routine_id}` })
-        loading.value = false
-      }, 500)
-    } else {
-      error.value = '排程生成失敗，無法取得排程 ID'
-      loading.value = false
-      step.value = 'preferences'
-    }
-  } catch (err: any) {
-    loading.value = false
-    const isTimeout = err?.name === 'TimeoutError' || String(err?.message || '').toLowerCase().includes('timeout')
-    if (isTimeout) { error.value = 'AI 重新排成逾時（3 分鐘），請稍後再試一次。'; step.value = 'preferences'; return }
-    const isLimitError = err?.statusCode === 409 || err?.response?.status === 409
-    if (!isRegenerateFlow.value && isLimitError) { redirectToLimitNotice(); return }
-    error.value = err.data?.message || err.message || 'AI 生成失敗，請檢查個人資料是否完整'
-    step.value = 'preferences'
-  }
-}
-
-const createManual = async () => {
-  if (loading.value) return
-  const canCreate = await ensureCanCreateRoutine()
-  if (!canCreate) return
-
-  loading.value = true
-  loadingMessage.value = '⏳ 準備預設排程...'
-
-  try {
-    await generateDefault()
-    if (routine.value && routine.value.routine_id) {
-      loadingMessage.value = '✅ 準備完成，正在跳轉...'
-      setTimeout(() => { router.push(`/routines/${routine.value!.routine_id}`); loading.value = false }, 500)
-    } else {
-      error.value = '排程準備失敗，無法取得排程 ID'
-      loading.value = false
-    }
-  } catch (err: any) {
-    loading.value = false
-    const isLimitError = err?.statusCode === 409 || err?.response?.status === 409
-    if (isLimitError) { redirectToLimitNotice(); return }
-    error.value = err.data?.message || err.message || '排程準備失敗'
-  }
-}
-
-const clearError = () => { error.value = null }
-
 // AI 成分推薦流程
 const recsIssues = ref<string[]>([])
+const recsCategories = ref<string[]>([])
+// 是否包含個人資料中的困擾（開啟時合並 profile.issues 一起送給 AI）
+const useProfileIssues = ref(true)
 const efficacyRecs = ref<Array<{ issue: string; category: string; suggestedIngredients: string[]; reason: string }>>([])
 const recsLoading = ref(false)
 const recsError = ref('')
@@ -402,7 +142,11 @@ const loadEfficacyRecs = async () => {
   try {
     const res = await $fetch<{ success: boolean; data: any[] }>(
       `/api/routines/${targetRoutineId.value}/efficacy-recs`,
-      { method: 'POST', body: { targetIssues: recsIssues.value } }
+      { method: 'POST', body: {
+        targetIssues: recsIssues.value,
+        targetCategories: recsCategories.value,
+        useProfileIssues: useProfileIssues.value
+      }}
     )
     if (res.success) efficacyRecs.value = res.data
     step.value = 'recs-results'
@@ -413,12 +157,29 @@ const loadEfficacyRecs = async () => {
   }
 }
 
+// 加入推薦並返回排程（結果寫入 sessionStorage）
+const confirmAndReturn = () => {
+  if (targetRoutineId.value) {
+    sessionStorage.setItem(
+      `efficacyRecs_${targetRoutineId.value}`,
+      JSON.stringify(efficacyRecs.value)
+    )
+  }
+  router.replace(`/routines/${targetRoutineId.value}`)
+}
+
+// 去新增產品（帶 category）
+const goAddProduct = (category: string) => {
+  router.push({ path: '/', query: { from: 'recs', routineId: targetRoutineId.value, category } })
+}
+
+// 錯誤提示不再使用，但保留定義防 Vue 編譯警告
+const error = ref<string | null>(null)
+const clearError = () => { error.value = null }
+
 onMounted(() => {
-  if (isRecsFlow.value && targetRoutineId.value) {
-    step.value = 'recs-concerns'
-  } else if (isRegenerateFlow.value && targetRoutineId.value) {
-    step.value = 'preferences'
-    preferences.value = getDefaultPreferences()
+  if (!isRecsFlow.value || !targetRoutineId.value) {
+    router.replace('/beauty-plan')
   }
 })
 </script>
@@ -712,7 +473,24 @@ onMounted(() => {
   font-size: 14px;
   color: var(--color-text-secondary);
   font-weight: 500;
+  flex: 1;
 }
+
+.btn-add-product {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--color-sage);
+  color: var(--color-sage);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--font-body);
+  transition: background 0.15s;
+}
+.btn-add-product:hover { background: var(--color-sage-light, #EAF0EC); }
 
 .recs-reason {
   font-size: 14px;
@@ -742,6 +520,118 @@ onMounted(() => {
   gap: var(--space-3);
   justify-content: space-between;
   margin-top: var(--space-4);
+}
+
+/* 結果操作列 */
+.results-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-light);
+}
+
+/* 每張卡頭部 */
+.recs-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.recs-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 個人困擾 toggle 列 */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+
+.toggle-switch {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.toggle-track {
+  display: block;
+  width: 40px;
+  height: 22px;
+  background: var(--color-border-light);
+  border-radius: 99px;
+  cursor: pointer;
+  transition: background 0.2s;
+  position: relative;
+}
+
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.toggle-switch input:checked ~ .toggle-track {
+  background: var(--color-sage);
+}
+
+.toggle-switch input:checked ~ .toggle-track::after {
+  transform: translateX(18px);
+}
+
+.toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggle-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.toggle-hint {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* 每張推薦卡的「去新增」按鈕 */
+.add-product-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--color-sage);
+  color: var(--color-sage);
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--font-body);
 }
 
 /* Info card */

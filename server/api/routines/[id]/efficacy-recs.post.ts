@@ -8,6 +8,7 @@ export default defineEventHandler(async (event) => {
 
 	const body = await readBody(event);
 	const targetIssues: string[] = Array.isArray(body.targetIssues) ? body.targetIssues : [];
+	const targetCategories: string[] = Array.isArray(body.targetCategories) ? body.targetCategories : [];
 
 	const supabase = await serverSupabaseClient(event);
 
@@ -15,7 +16,7 @@ export default defineEventHandler(async (event) => {
 	const { data: profile } = await (supabase as any)
 		.from('profiles')
 		.select('base_skin_type, issues, gender, birth_year')
-		.eq('user_id', userId)
+		.eq('id', userId)
 		.single();
 
 	// 取得保養品櫃
@@ -30,7 +31,8 @@ export default defineEventHandler(async (event) => {
 	const recommendations = await aiService.generateEfficacyRecommendations(
 		profile,
 		products || [],
-		targetIssues
+		targetIssues,
+		targetCategories
 	);
 
 	return { success: true, data: recommendations };

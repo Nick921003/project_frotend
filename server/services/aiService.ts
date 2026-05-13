@@ -443,21 +443,27 @@ ${knownContext}${unknownContext}
   async generateEfficacyRecommendations(
     profile: UserProfileData,
     products: CabinetProduct[],
-    targetIssues: string[]
+    targetIssues: string[],
+    targetCategories: string[] = []
   ): Promise<Array<{ issue: string; category: string; suggestedIngredients: string[]; reason: string }>> {
     const existingSummary = products.map(p => {
       const ings = this.tryParseIngredients(p.raw_ingredients).slice(0, 8).join(', ');
       return `- ${p.product_name}（${p.product_category}）: ${ings || '成分未知'}`;
     }).join('\n');
 
+    // 品類限制提示
+    const categoryConstraint = targetCategories.length > 0
+      ? `\n只在以下品類中給出建議：${targetCategories.join('、')}` : ''
+
     const prompt = `你是一位專業化妝品配方師。以下是使用者資料與現有保養品：
 
 膚質：${profile.base_skin_type}
+性別：${profile.gender || '未指定'}（請根據性別推薦適合的保養品，例如男性通常不需要眼霜或化妝水）
 困擾：${targetIssues.length > 0 ? targetIssues.join('、') : profile.issues || '一般保養'}
 現有產品與主要成分：
 ${existingSummary || '（無產品）'}
 
-請分析現有產品的成分覆蓋，找出「功效缺口」，針對使用者的困擾給出 2~4 條補充建議。
+請分析現有產品的成分覆蓋，找出「功效缺口」，針對使用者的困擾給出 2~4 條補充建議。${categoryConstraint}
 即使某品類已有產品，也可以推薦含不同功效成分的同品類產品。
 
 以 JSON 陣列回傳，每筆格式如下：

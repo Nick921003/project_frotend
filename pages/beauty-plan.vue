@@ -62,6 +62,10 @@
                 v-if="daysUntilFinish(product.opened_at, product.estimated_finish_days) !== null && daysUntilFinish(product.opened_at, product.estimated_finish_days)! <= 7"
                 class="expiring-text"
               >快用完</span>
+              <span
+                v-if="(product as any).routine_usage_count > 0"
+                class="routine-usage-badge"
+              >排程中 ×{{ (product as any).routine_usage_count }}</span>
             </td>
             <td class="product-category">{{ product.product_category }}</td>
             <td>
@@ -447,6 +451,17 @@ const goNextCabinetPage = async () => {
 
 .product-category {
   color: var(--color-text-secondary);
+}
+
+.routine-usage-badge {
+	font-size: 11px;
+	color: var(--color-text-secondary);
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	padding: 1px 6px;
+	margin-left: 6px;
+	vertical-align: middle;
 }
 
 .product-date {

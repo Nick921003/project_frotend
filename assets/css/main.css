@@ -1,27 +1,31 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500&family=Noto+Serif+TC:wght@600&display=swap');
 
 /* ─── Design Tokens ─────────────────────────────────────── */
 :root {
-  /* 背景與表面 */
-  --color-bg: #F7F4F0;
+  /* 背景與表面（莫蘭迪暖色系） */
+  --color-bg: #F5F0EB;
   --color-surface: #FFFFFF;
-  --color-surface-alt: #F2EDE8;
+  --color-surface-alt: #EDE7E0;
   --color-border: #E0D6CC;
   --color-border-light: #EAE4DE;
 
   /* 文字 */
-  --color-text-primary: #3A322D;
-  --color-text-secondary: #8C7E76;
+  --color-text-primary: #3D3530;
+  --color-text-secondary: #7A6E68;
   --color-text-muted: #B0A49C;
 
-  /* 主強調色：磚紅 / 赤陶 */
-  --color-accent: #A07060;
-  --color-accent-hover: #8A5E50;
-  --color-accent-light: #F5EAE5;
+  /* 主強調色：霧玫 */
+  --color-accent: #C4958A;
+  --color-accent-hover: #A87B71;
+  --color-accent-light: #F7EDEB;
+
+  /* 輔助色：暖米 / 淺棕 */
+  --color-warm: #E8DDD0;
+  --color-warm-dark: #C4B5A5;
 
   /* 語意色 */
-  --color-sage: #7A9A80;
-  --color-sage-light: #ECF2ED;
+  --color-sage: #8FA89C;
+  --color-sage-light: #EBF1EF;
   --color-amber: #C49A6A;
   --color-amber-light: #FAF0E5;
   --color-red: #B86B6B;
@@ -29,9 +33,9 @@
   --color-gold: #C9A96E;
   --color-gold-light: #FAF5EA;
 
-  /* 字型 */
-  --font-heading: 'Noto Serif SC', Georgia, serif;
-  --font-body: 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+  /* 字型：繁體中文優先 */
+  --font-heading: 'Noto Serif TC', Georgia, serif;
+  --font-body: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
 
   /* 間距 */
   --space-1: 4px;

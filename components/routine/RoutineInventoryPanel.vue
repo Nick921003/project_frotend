@@ -87,4 +87,9 @@ const filteredAvailableProducts = computed(() => {
 .btn-quick-add--evening:hover { background: var(--color-accent-light); }
 
 .empty-inventory { padding: 40px; text-align: center; color: var(--color-text-muted); font-size: 13px; }
+
+@media (max-width: 768px) {
+  .section { padding: var(--space-4); }
+  .product-list { min-height: 200px; }
+}
 </style>

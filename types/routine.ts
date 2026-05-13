@@ -47,6 +47,11 @@ export interface CabinetProduct {
   overview: string | null;
   created_at: string;
   updated_at: string;
+  // 使用追蹤欄位
+  opened_at: string | null;
+  estimated_finish_days: number | null;
+  purchase_purpose: string | null;
+  user_notes: string | null;
 }
 
 /**
@@ -65,6 +70,7 @@ export interface RoutineItem {
   ingredients?: string[];
   is_recommendation: boolean; // true 表示此為 AI 建議添購
   is_locked?: boolean; // true 表示鎖定，AI 不會調整/刪除
+  is_orphan?: boolean; // true 表示對應產品已從保養品櫃刪除
   recommendation_reason?: string;
   notes?: string;
   created_at?: string;
@@ -134,6 +140,7 @@ export interface CabinetProductItem {
   product_name: string;
   product_category: string;
   raw_ingredients: string;
+  analysis_result?: Record<string, any> | null;
   is_recommendation: boolean;
 }
 
@@ -160,6 +167,7 @@ export interface WeeklyRoutine {
   _empty_reason?: 'no_products' | 'no_items'; // 用於前端識別空排程的原因
   themes?: string[]; // 選擇的排程主題/類型（如 'hydration', 'anti-aging' 等）
   custom_themes?: string[]; // 自定義主題
+  conflicts_by_day?: Record<number, { rule: string; message: string }[]>;
 }
 
 /**

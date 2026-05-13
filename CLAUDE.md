@@ -88,3 +88,37 @@ SUPABASE_ANON_KEY
 NUXT_SUPABASE_SECRET_KEY   # Service role key — server only
 GEMINI_API_KEY             # Server only (set in runtimeConfig.geminiApiKey)
 ```
+
+## Design System（文清風）
+
+Design tokens defined in `assets/css/main.css` `:root`. **Never hardcode colors — always use CSS variables.**
+
+| Variable | Value | Usage |
+|----------|-------|-------|
+| `--color-bg` | `#F5F0EB` | Page background |
+| `--color-surface` | `#FFFFFF` | Card/panel background |
+| `--color-surface-alt` | `#EDE7E0` | Secondary surface |
+| `--color-accent` | `#C4958A` | 霧玫 — primary CTA |
+| `--color-sage` | `#8FA89C` | 霧綠 — success/save |
+| `--color-warm` | `#E8DDD0` | 暖米 — decorative |
+| `--color-warm-dark` | `#C4B5A5` | 淺棕 — decorative |
+| `--color-text-primary` | `#3D3530` | Body text |
+| `--color-text-secondary` | `#7A6E68` | Subdued text |
+| `--font-heading` | `Noto Serif TC` | Headings only |
+| `--font-body` | `Noto Sans TC` | All body copy |
+
+**Principles:** Large whitespace, 1px borders, minimal icons (functional only), no rounded-corner stacking.
+
+## DB Migrations
+
+Run via Supabase MCP (`mcp__claude_ai_Supabase__apply_migration`). Applied migrations:
+
+1. `official_ingredients`: added `efficacy_tags text[]`, `function_summary text`
+2. `user_cabinet`: added `opened_at timestamptz`, `estimated_finish_days integer`, `purchase_purpose text`, `user_notes text`
+
+## efficacy_tags Field
+
+`official_ingredients.efficacy_tags` uses fixed vocabulary:
+`moisturizing / exfoliating / antioxidant / soothing / brightening / sunscreen / anti_acne / anti_aging / emollient / preservative`
+
+Populated by `scripts/populate-efficacy-tags.mjs`. Returned in `analyze.post.ts` response as part of `safeList` items and `efficacySummary.primaryTags`.

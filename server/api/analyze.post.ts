@@ -87,10 +87,10 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    // 5. 查詢 Supabase official_ingredients 進行比對
+    // 5. 查詢 Supabase official_ingredients 進行比對（含功效欄位）
     const { data: matchedIngredients, error: dbError } = await supabase
       .from('official_ingredients')
-      .select('inci_name, limit_standard, warning_text, skin_type_risks')
+      .select('inci_name, limit_standard, warning_text, skin_type_risks, efficacy_tags, function_summary')
       .in('inci_name', inciArray);
 
     if (dbError) {
@@ -185,20 +185,77 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    // 計算安全/未知成分（使用 Set 提升性能）
-    const safeOrUnknownIngredients = inciArray.filter(inci => !flaggedInciNames.has(inci));
+    // 計算安全/未知成分，同時附上 DB 中的功效說明
+    const dbMap = new Map((matchedIngredients as any[] ?? []).map((i: any) => [i.inci_name, i]));
+    const safeOrUnknownIngredients = inciArray
+      .filter(inci => !flaggedInciNames.has(inci))
+      .map(inci => {
+        const dbRow = dbMap.get(inci) as any;
+        return {
+          inci_name: inci,
+          efficacy_tags: dbRow?.efficacy_tags ?? [],
+          function_summary: dbRow?.function_summary ?? null
+        };
+      });
 
-    // 7. 使用 AIService 生成配方綜合評估
-    let aiSummary: string;
-    try {
-      console.log('[Analyze API] 使用 AIService 生成產品評語');
-      aiSummary = await aiService.generateProductSummary(inciArray, skinType || 'general');
-    } catch (summaryError: any) {
-      console.error('[Analyze API] AI 評語生成失敗:', summaryError.message);
-      aiSummary = '產品評語生成失敗，但成分分析已完成。';
+    // 7. 從 DB 資料計算 efficacySummary.primaryTags
+    const tagCount: Record<string, number> = {};
+    if (matchedIngredients) {
+      for (const ing of matchedIngredients as any[]) {
+        const tags: string[] = ing.efficacy_tags || [];
+        for (const tag of tags) {
+          tagCount[tag] = (tagCount[tag] || 0) + 1;
+        }
+      }
+    }
+    const primaryTags = Object.entries(tagCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([tag]) => tag);
+
+    // 功效標籤對應膚質適合度
+    const TAG_SUITABLE: Record<string, { for: string[]; notFor: string[] }> = {
+      moisturizing:  { for: ['乾性肌', '混合肌'], notFor: [] },
+      exfoliating:   { for: ['油性肌', '混合肌'], notFor: ['敏感肌'] },
+      antioxidant:   { for: ['所有膚質'], notFor: [] },
+      soothing:      { for: ['敏感肌', '乾性肌'], notFor: [] },
+      brightening:   { for: ['混合肌', '油性肌'], notFor: [] },
+      sunscreen:     { for: ['所有膚質'], notFor: [] },
+      anti_acne:     { for: ['油性肌', '混合肌'], notFor: ['乾性肌'] },
+      anti_aging:    { for: ['乾性肌', '混合肌'], notFor: [] },
+      emollient:     { for: ['乾性肌'], notFor: ['油性肌'] },
+      preservative:  { for: [], notFor: [] },
+    };
+    const suitableSet = new Set<string>();
+    const notIdealSet = new Set<string>();
+    for (const tag of primaryTags) {
+      const map = TAG_SUITABLE[tag];
+      if (map) {
+        map.for.forEach(s => suitableSet.add(s));
+        map.notFor.forEach(s => notIdealSet.add(s));
+      }
     }
 
-    // 8. 最終資料重組與回傳
+    // 8. 使用 AIService 生成配方綜合評估（含 verdict）
+    let aiOverview = '產品評語生成失敗，但成分分析已完成。';
+    let aiVerdict = '';
+    try {
+      console.log('[Analyze API] 使用 AIService 生成產品評語');
+      const summaryResult = await aiService.generateProductSummary(inciArray, skinType || 'general', matchedIngredients as any[] ?? []);
+      aiOverview = summaryResult.overview;
+      aiVerdict = summaryResult.verdict;
+    } catch (summaryError: any) {
+      console.error('[Analyze API] AI 評語生成失敗:', summaryError.message);
+    }
+
+    const efficacySummary = {
+      primaryTags,
+      verdict: aiVerdict,
+      suitableFor: Array.from(suitableSet),
+      notIdealFor: Array.from(notIdealSet)
+    };
+
+    // 9. 最終資料重組與回傳
     return {
       status: 'success',
       message: '雙引擎分析完成',
@@ -206,12 +263,13 @@ export default defineEventHandler(async (event) => {
         rawAiOutput: inciArray,
         detectedProductName,
         analysis: {
-          regulatoryAlerts,  // DB 處理：法規紅燈（強制警語/禁用）
-          limitAlerts,       // DB 處理：限量成分黃燈（濃度未知）
-          skinTypeAlerts,    // DB 處理：膚質黃燈
-          safeList: safeOrUnknownIngredients // DB 未匹配到的成分
+          regulatoryAlerts,
+          limitAlerts,
+          skinTypeAlerts,
+          safeList: safeOrUnknownIngredients,
+          efficacySummary
         },
-        overallSummary: aiSummary
+        overallSummary: aiOverview
       }
     };
 

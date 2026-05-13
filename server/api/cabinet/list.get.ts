@@ -56,9 +56,32 @@ export default defineEventHandler(async (event) => {
     });
   }
 
+  // 批次查詢每個產品在 routine_items 中被使用的次數
+  const productIds = (data || []).map((p: any) => p.id);
+  let usageMap = new Map<string, number>();
+
+  if (productIds.length > 0) {
+    const { data: usageData } = await (supabase as any)
+      .from('routine_items')
+      .select('product_id, routine_id')
+      .in('product_id', productIds)
+      .eq('is_recommendation', false);
+
+    // 計算每個 product_id 出現在幾個不同的 routine
+    for (const row of (usageData || [])) {
+      if (!row.product_id) continue;
+      usageMap.set(row.product_id, (usageMap.get(row.product_id) || 0) + 1);
+    }
+  }
+
+  const enrichedData = (data || []).map((p: any) => ({
+    ...p,
+    routine_usage_count: usageMap.get(p.id) || 0
+  }));
+
   return {
     success: true,
-    data: data || [],
+    data: enrichedData,
     meta: {
       total: count ?? 0,
       limit,

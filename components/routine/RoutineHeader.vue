@@ -1,13 +1,24 @@
 <template>
   <div class="header">
-    <h1>📅 每週保養排程</h1>
-    <div v-if="routine" class="routine-meta-editor">
+    <!-- 排程名稱顯示：點擊展開編輯 -->
+    <div v-if="routine" class="routine-title-area">
+      <h1
+        class="routine-title"
+        :class="{ editing: showMetaEditor }"
+        @click="showMetaEditor = !showMetaEditor"
+        :title="showMetaEditor ? '收合' : '點擊編輯名稱'"
+      >{{ routine.name || '未命名排程' }}</h1>
+      <p v-if="routine.description && !showMetaEditor" class="routine-desc">{{ routine.description }}</p>
+    </div>
+
+    <div v-if="routine && showMetaEditor" class="routine-meta-editor">
       <input
         v-model="routineNameDraft"
         class="meta-name-input"
         type="text"
         maxlength="60"
         placeholder="請輸入排程名稱"
+        autofocus
       />
       <textarea
         v-model="routineDescriptionDraft"
@@ -19,18 +30,18 @@
         <button @click="saveRoutineMeta" class="btn-save-meta" :disabled="savingMeta || !routineNameDraft.trim()">
           {{ savingMeta ? '保存中...' : '保存名稱' }}
         </button>
-        <button @click="resetRoutineMetaDraft" class="btn-reset-meta" :disabled="savingMeta">
+        <button @click="showMetaEditor = false; resetRoutineMetaDraft()" class="btn-reset-meta" :disabled="savingMeta">
           取消
         </button>
       </div>
 
       <button class="theme-merge-toggle" @click="showThemeEditor = !showThemeEditor">
-        {{ showThemeEditor ? '收合主題設定' : '編輯排程主題' }}
+        {{ showThemeEditor ? '收合主題' : '編輯主題' }}
       </button>
 
       <div v-if="showThemeEditor" class="themes-section inline-merged">
         <div class="themes-header">
-          <h2>🎨 排程主題</h2>
+          <h2>排程主題</h2>
           <p class="themes-subtitle">主題設定已合併到上方名稱區，保存後立即生效</p>
         </div>
 
@@ -105,6 +116,7 @@ const emit = defineEmits<{
 }>();
 
 // Meta 狀態
+const showMetaEditor = ref(false);
 const routineNameDraft = ref('');
 const routineDescriptionDraft = ref('');
 const savingMeta = ref(false);
@@ -154,7 +166,8 @@ const saveRoutineMeta = async () => {
 
     if (response.success) {
       emit('meta-saved', response.data.name, response.data.description || '');
-      emit('message', true, '✅ 排程名稱已更新');
+      emit('message', true, '排程名稱已更新');
+      showMetaEditor.value = false;
     }
   } catch (err: any) {
     emit('message', false, `❌ 更新失敗: ${err.data?.message || err.message || '未知錯誤'}`);
@@ -213,11 +226,31 @@ const saveThemes = async () => {
   text-align: center;
 }
 
-.header h1 {
+.routine-title-area {
+  margin-bottom: var(--space-4);
+}
+
+.routine-title {
   font-family: var(--font-heading);
-  font-size: 26px;
+  font-size: 24px;
   color: var(--color-text-primary);
-  margin: 0 0 var(--space-4);
+  margin: 0 0 var(--space-2);
+  cursor: pointer;
+  display: inline-block;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.18s, color 0.18s;
+}
+
+.routine-title:hover,
+.routine-title.editing {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.routine-desc {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin: 0;
 }
 
 .routine-meta-editor {

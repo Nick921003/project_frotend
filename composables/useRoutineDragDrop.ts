@@ -1,5 +1,6 @@
-import type { Ref } from 'vue';
+import { ref, type Ref } from 'vue';
 import type { WeeklyRoutine, RoutineItem, CabinetProductItem } from '~/types/routine';
+import { checkConflicts, type ConflictWarning } from '~/utils/ingredientConflicts';
 
 export function useRoutineDragDrop(
   routine: Ref<WeeklyRoutine | null>,
@@ -11,6 +12,13 @@ export function useRoutineDragDrop(
 ) {
   let draggedProduct: CabinetProductItem | RoutineItem | null = null;
   let draggedFromInventory = false;
+  const conflictWarnings = ref<ConflictWarning[]>([]);
+
+  /** 更新指定時段的衝突警示 */
+  function refreshConflicts(dayIdx: number, timeOfDay: 'morning' | 'evening') {
+    const items = getItemsForTimeslot(dayIdx, timeOfDay);
+    conflictWarnings.value = checkConflicts(items);
+  }
 
   const onInventoryDragStart = (evt: DragEvent, product: CabinetProductItem) => {
     draggedProduct = product;
@@ -114,6 +122,7 @@ export function useRoutineDragDrop(
 
     draggedProduct = null;
     draggedFromInventory = false;
+    refreshConflicts(dayIdx, timeOfDay);
   };
 
   const quickAdd = (product: CabinetProductItem, timeOfDay: 'morning' | 'evening') => {
@@ -150,7 +159,8 @@ export function useRoutineDragDrop(
     saveSuccess.value = true;
     saveMessage.value = `✓ 已加入週${dayName}${slotLabel}`;
     setTimeout(() => { saveMessage.value = null; }, 2000);
+    refreshConflicts(dayIdx, timeOfDay);
   };
 
-  return { onInventoryDragStart, onProductDragStart, onProductDrop, quickAdd };
+  return { onInventoryDragStart, onProductDragStart, onProductDrop, quickAdd, conflictWarnings };
 }

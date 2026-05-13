@@ -141,10 +141,11 @@
         <h4>🟢 一般成分（未觸發警報）</h4>
         <div class="safe-chips">
           <span
-            v-for="name in result.data.analysis.safeList"
-            :key="name"
+            v-for="item in result.data.analysis.safeList"
+            :key="typeof item === 'string' ? item : item.inci_name"
             class="badge badge-muted"
-          >{{ name }}</span>
+            :title="typeof item === 'object' && item.function_summary ? item.function_summary : undefined"
+          >{{ typeof item === 'string' ? item : item.inci_name }}</span>
           <span v-if="result.data.analysis.safeList.length === 0" class="hint-text">無</span>
         </div>
       </div>
@@ -442,8 +443,8 @@ onMounted(() => {
 }
 
 .action-btn--save:hover:not(:disabled) {
-  background: #6A8A70;
-  border-color: #6A8A70;
+  background: #7A9870;
+  border-color: #7A9870;
 }
 
 .results-section {

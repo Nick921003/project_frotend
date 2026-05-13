@@ -41,6 +41,64 @@
       </div>
     </form>
 
+    <!-- 使用追蹤 -->
+    <div v-if="!loading && product" class="card tracking-card">
+      <h2 class="section-title">使用追蹤</h2>
+
+      <div class="form-group">
+        <label class="form-label" for="opened_at">開封日期</label>
+        <input
+          id="opened_at"
+          v-model="tracking.opened_at"
+          type="date"
+          class="form-input"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="estimated_finish_days">預估使用天數</label>
+        <input
+          id="estimated_finish_days"
+          v-model.number="tracking.estimated_finish_days"
+          type="number"
+          min="1"
+          class="form-input"
+          placeholder="例如：60"
+        />
+        <p v-if="estimatedFinishDate" class="hint-text">預計用完日：{{ estimatedFinishDate }}</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="purchase_purpose">購買目的</label>
+        <textarea
+          id="purchase_purpose"
+          v-model="tracking.purchase_purpose"
+          class="form-input form-textarea"
+          placeholder="當初買來解決什麼問題？"
+          rows="2"
+        />
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" for="user_notes">使用筆記</label>
+        <textarea
+          id="user_notes"
+          v-model="tracking.user_notes"
+          class="form-input form-textarea"
+          placeholder="使用心得、注意事項..."
+          rows="3"
+        />
+      </div>
+
+      <div class="form-actions" style="margin-top: var(--space-4); margin-bottom: 0;">
+        <button type="button" class="btn btn-primary" :disabled="isSavingTracking" @click="saveTracking">
+          {{ isSavingTracking ? '儲存中...' : '儲存追蹤資料' }}
+        </button>
+      </div>
+
+      <p v-if="trackingSaveMsg" class="hint-text" style="margin-top: var(--space-2);">{{ trackingSaveMsg }}</p>
+    </div>
+
     <!-- AI 分析結果（唯讀） -->
     <div v-if="product?.analysis_result?.analysis" class="card analysis-card">
       <h2 class="section-title" style="font-size: 18px; border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-4);">AI 分析結果</h2>
@@ -84,14 +142,14 @@
 
       <div v-if="product.analysis_result.analysis.safeList?.length > 0" class="alert-block alert-green" style="margin-bottom: 0;">
         <h4>✅ 其他成分（無法規標記）</h4>
-        <p class="safe-list">{{ product.analysis_result.analysis.safeList.join('、') }}</p>
+        <p class="safe-list">{{ product.analysis_result.analysis.safeList.map((i: any) => typeof i === 'string' ? i : i.inci_name).join('、') }}</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import type { CabinetProduct } from '~/types/routine'
 import { PRODUCT_CATEGORIES, normalizeProductCategory } from '~/utils/productCategories'
 
@@ -101,10 +159,27 @@ const route = useRoute()
 const product = ref<Partial<CabinetProduct> | null>(null)
 const loading = ref(true)
 const isSaving = ref(false)
+const isSavingTracking = ref(false)
 const error = ref<string | null>(null)
+const trackingSaveMsg = ref('')
 const categoryOptions = PRODUCT_CATEGORIES
 
 const productId = route.params.id as string
+
+const tracking = reactive({
+  opened_at: '' as string,
+  estimated_finish_days: null as number | null,
+  purchase_purpose: '' as string,
+  user_notes: '' as string
+})
+
+// 計算預計用完日
+const estimatedFinishDate = computed(() => {
+  if (!tracking.opened_at || !tracking.estimated_finish_days) return ''
+  const d = new Date(tracking.opened_at)
+  d.setDate(d.getDate() + tracking.estimated_finish_days)
+  return d.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })
+})
 
 const fetchProduct = async () => {
   loading.value = true
@@ -116,6 +191,13 @@ const fetchProduct = async () => {
         ...response.data,
         product_category: normalizeProductCategory(response.data.product_category)
       }
+      // 初始化追蹤欄位
+      tracking.opened_at = response.data.opened_at
+        ? response.data.opened_at.slice(0, 10)
+        : ''
+      tracking.estimated_finish_days = response.data.estimated_finish_days ?? null
+      tracking.purchase_purpose = response.data.purchase_purpose ?? ''
+      tracking.user_notes = response.data.user_notes ?? ''
     } else {
       error.value = '無法載入產品資訊'
     }
@@ -180,6 +262,33 @@ const deleteProduct = async () => {
   }
 }
 
+const saveTracking = async () => {
+  if (!productId) return
+
+  isSavingTracking.value = true
+  trackingSaveMsg.value = ''
+  error.value = null
+
+  try {
+    await $fetch(`/api/cabinet/${productId}`, {
+      method: 'PUT',
+      body: {
+        opened_at: tracking.opened_at || null,
+        estimated_finish_days: tracking.estimated_finish_days,
+        purchase_purpose: tracking.purchase_purpose || null,
+        user_notes: tracking.user_notes || null
+      }
+    })
+    trackingSaveMsg.value = '追蹤資料已儲存'
+    setTimeout(() => { trackingSaveMsg.value = '' }, 3000)
+  } catch (err: any) {
+    console.error('Save tracking error:', err)
+    error.value = err.data?.message || '儲存追蹤資料失敗'
+  } finally {
+    isSavingTracking.value = false
+  }
+}
+
 const goBack = () => {
   router.push('/beauty-plan')
 }
@@ -205,6 +314,21 @@ onMounted(() => {
 .form-actions .btn {
   flex: 1;
   min-width: 80px;
+}
+
+.tracking-card {
+  margin-top: var(--space-5);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.hint-text {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: var(--space-1) 0 0;
 }
 
 .analysis-card {

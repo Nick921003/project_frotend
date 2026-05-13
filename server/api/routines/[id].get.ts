@@ -1,4 +1,5 @@
 import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server';
+import { detectConflicts } from '~/server/utils/ingredientConflicts';
 
 /**
  * GET /api/routines/:id
@@ -75,17 +76,55 @@ export default defineEventHandler(async (event) => {
     // 不要因為無法取得產品而失敗
   }
 
+  // 找出哪些 product_id 仍在保養品櫃（用於孤兒標示）
+  const existingProductIds = new Set<string>(
+    (productsData || []).map((p: any) => p.id).filter(Boolean)
+  );
+
+  // 將 is_orphan 旗標附加到 items
+  const itemsWithOrphan = (itemsData || []).map((item: any) => ({
+    ...item,
+    is_orphan: item.product_id != null && !existingProductIds.has(item.product_id)
+  }));
+
+  // 建立 productId → raw_ingredients 快查表，用於衝突偵測
+  const productIngredientMap = new Map<string, string>();
+  for (const p of (productsData || [])) {
+    if (p.id && p.raw_ingredients) {
+      productIngredientMap.set(p.id, String(p.raw_ingredients).toLowerCase());
+    }
+  }
+
+  // 計算各天的成分衝突
+  const conflictsByDay: Record<number, { rule: string; message: string }[]> = {};
+  for (let day = 0; day < 7; day++) {
+    const dayItems = itemsWithOrphan.filter((i: any) => i.day_of_week === day);
+    const allIngredients = dayItems
+      .map((i: any) => {
+        if (Array.isArray(i.ingredients) && i.ingredients.length > 0) return i.ingredients as string[];
+        if (i.product_id && productIngredientMap.has(i.product_id)) {
+          return [productIngredientMap.get(i.product_id)!];
+        }
+        return [] as string[];
+      })
+      .filter((arr: string[]) => arr.length > 0);
+    const warnings = detectConflicts(allIngredients);
+    if (warnings.length > 0) conflictsByDay[day] = warnings;
+  }
+
   // 組合完整的 routine 對象
   return {
     success: true,
     data: {
       ...routineData,
-      items: itemsData || [],
+      items: itemsWithOrphan,
+      conflicts_by_day: conflictsByDay,
       all_products: (productsData || []).map((p: any) => ({
         id: p.id,
         product_name: p.product_name,
         product_category: p.product_category,
         raw_ingredients: p.raw_ingredients || '',
+        analysis_result: p.analysis_result || null,
         is_recommendation: false
       }))
     },

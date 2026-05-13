@@ -73,6 +73,7 @@
           :on-product-drag-start="onProductDragStart"
           :on-product-drop="onProductDrop"
           :product-analysis-map="productAnalysisMap"
+          :conflicts-by-day="routine.conflicts_by_day || {}"
           @toggle-item-lock="toggleItemLock"
           @remove-item="removeItem"
         />

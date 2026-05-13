@@ -167,6 +167,7 @@ export interface WeeklyRoutine {
   _empty_reason?: 'no_products' | 'no_items'; // 用於前端識別空排程的原因
   themes?: string[]; // 選擇的排程主題/類型（如 'hydration', 'anti-aging' 等）
   custom_themes?: string[]; // 自定義主題
+  conflicts_by_day?: Record<number, { rule: string; message: string }[]>;
 }
 
 /**

@@ -14,6 +14,11 @@
           v-if="getMorningItems(dayIdx).length + getEveningItems(dayIdx).length > 0"
           class="tab-count"
         ></span>
+        <span
+          v-if="conflictsByDay[dayIdx]?.length"
+          class="tab-conflict"
+          :title="conflictsByDay[dayIdx].map(c => c.message).join('\n')"
+        >⚠</span>
       </button>
     </div>
 
@@ -44,6 +49,20 @@
 
     <!-- 單日內容區 -->
     <div class="day-view">
+      <!-- 成分衝突提示 -->
+      <div
+        v-if="conflictsByDay[expandedDayIdx]?.length"
+        class="conflict-banner"
+      >
+        <strong>⚠ 成分搭配提示</strong>
+        <ul>
+          <li
+            v-for="c in conflictsByDay[expandedDayIdx]"
+            :key="c.rule"
+          >{{ c.message }}</li>
+        </ul>
+      </div>
+
       <!-- 早晨排程 -->
       <div class="time-slot morning">
         <div class="time-label">早晨</div>
@@ -207,8 +226,10 @@ const props = withDefaults(defineProps<{
   onProductDragStart: Function;
   onProductDrop: Function;
   productAnalysisMap?: Map<string, any>;
+  conflictsByDay?: Record<number, { rule: string; message: string }[]>;
 }>(), {
-  productAnalysisMap: () => new Map()
+  productAnalysisMap: () => new Map(),
+  conflictsByDay: () => ({})
 });
 
 defineEmits<{
@@ -299,6 +320,18 @@ const getEveningItems = (dayIdx: number) =>
 .btn-lock:hover { opacity: 1; }
 .btn-remove { background: var(--color-red-light); color: var(--color-red); border: none; border-radius: var(--radius-sm); cursor: pointer; padding: 2px 8px; font-weight: 700; font-size: 14px; transition: background 0.2s; }
 .btn-remove:hover { background: #F0D0D0; }
+
+.tab-conflict { font-size: 11px; color: var(--color-amber); margin-left: 2px; }
+.conflict-banner {
+	background: #FFF8EE;
+	border: 1px solid var(--color-amber);
+	border-radius: var(--radius-md);
+	padding: var(--space-sm, 8px) var(--space-md, 12px);
+	margin-bottom: var(--space-md, 12px);
+	font-size: 13px;
+	color: var(--color-text-primary);
+}
+.conflict-banner ul { margin: 4px 0 0; padding-left: 16px; }
 
 .item-analysis { flex: 0 0 100%; margin-top: var(--space-xs, 4px); }
 .item-analysis__toggle { font-size: 11px; color: var(--color-text-muted); cursor: pointer; }

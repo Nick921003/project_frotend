@@ -167,7 +167,6 @@ interface RoutineListItem {
   id: string
   name: string
   description?: string | null
-  created_by_ai?: boolean | null
   is_active?: boolean | null
   themes?: string[] | null
   custom_themes?: string[] | null

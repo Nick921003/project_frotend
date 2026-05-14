@@ -8,9 +8,5 @@ import type { WeeklyRoutine } from '~/types/routine';
 export const useCreateRoutine = () => {
   const routine = ref<WeeklyRoutine | null>(null);
 
-  const reset = () => {
-    routine.value = null;
-  };
-
-  return { routine, reset };
+  return { routine };
 };

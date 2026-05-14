@@ -6,11 +6,6 @@ import type { UserProfileData, CabinetProduct, WeeklyRoutine } from '~/types/rou
  * 
  * 使用 Gemini AI 根據使用者資料與現有產品生成每週保養規劃
  * 
- * Request body:
- * {
- *   useAI: boolean (optional, default: true)
- * }
- * 
  * Response:
  * {
  *   success: boolean,

@@ -6,6 +6,12 @@
         <NuxtLink to="/" class="nav-brand">分析與推薦</NuxtLink>
 
         <div class="nav-right">
+          <NuxtLink
+            v-if="user"
+            to="/routines/active"
+            class="nav-routine-btn"
+          >今日排程</NuxtLink>
+
           <div class="nav-menu-wrap">
             <button class="nav-profile-btn" @click="toggleProfileMenu">
               <span class="nav-avatar">👤</span>
@@ -196,5 +202,20 @@ onUnmounted(() => document.removeEventListener('click', closeMenu))
 
 .main-content {
   padding: var(--space-6) 0;
+}
+
+.nav-routine-btn {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.18s, color 0.18s;
+}
+.nav-routine-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 </style>

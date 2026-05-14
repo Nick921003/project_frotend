@@ -19,20 +19,6 @@
     </div>
 
     <div v-if="!pageLoading && routine" class="content">
-      <!-- 空排程提示 (高優先級) -->
-      <div v-if="routine.items.length === 0 && !routine.created_by_ai" class="empty-routine-alert">
-        <div class="alert-content">
-          <h2>排程還是空的</h2>
-          <p class="alert-message">
-            {{ routine._empty_reason === 'no_products' ? '您目前還沒有添加任何保養品。請先前往保養品櫃添加一些產品。' : '您可以從左側庫存拖拽產品到日程表。' }}
-          </p>
-          <div class="alert-actions">
-            <button @click="goToCabinet" class="btn-primary">前往保養品櫃</button>
-            <button @click="goBack" class="btn-secondary">返回上一頁</button>
-          </div>
-        </div>
-      </div>
-
     <!-- AI 推薦與順序建議 (Component D) -->
       <RoutineRecommendations
         :efficacy-recs="efficacyRecs"
@@ -248,9 +234,6 @@ const resetSchedule = async () => {
 // ==================
 const goToAIRecs = () => router.push({ path: '/routines/new', query: { action: 'recs', routineId } });
 const goToAddProduct = (cat: string) => router.push({ path: '/', query: { from: 'routine', routineId, category: cat } });
-const goToCabinet = () => router.push({ path: '/', query: { from: 'routine', routineId, source: 'empty-routine' } });
-const goBack = () => router.back();
-
 // ==================
 // 生命週期
 // ==================
@@ -338,18 +321,6 @@ onMounted(async () => {
   color: var(--color-red);
   margin-bottom: var(--space-5);
 }
-
-.empty-routine-alert {
-  background: var(--color-accent-light);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-8) var(--space-8);
-  margin-bottom: var(--space-6);
-}
-
-.alert-content h2 { margin: 0 0 var(--space-2); font-size: 18px; font-family: var(--font-heading); }
-.alert-message { color: var(--color-text-secondary); margin-bottom: 16px; }
-.alert-actions { display: flex; gap: 12px; }
 
 .btn-primary { padding: 8px 16px; background: var(--color-accent); color: #fff; border: none; border-radius: 6px; cursor: pointer; }
 .btn-secondary { padding: 8px 16px; background: var(--color-surface); color: var(--color-accent); border: 1px solid var(--color-accent); border-radius: 6px; cursor: pointer; }

@@ -21,6 +21,12 @@ export default defineNuxtConfig({
   supabase: {
     redirect: false,  // 禁用自動重導，由我們手動控制
   },
+
+  vite: {
+    optimizeDeps: {
+      include: ['cookie'],
+    },
+  },
   
   runtimeConfig: {
     // 後端 API 用的 Secret Key（私密）

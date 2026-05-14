@@ -99,7 +99,9 @@
     <section class="card section-card">
       <div class="section-header-row">
         <h2 class="section-heading" style="margin-bottom: 0;">我的排程</h2>
-        <button class="btn btn-primary btn-sm" @click="goCreate">+ 建立新排程</button>
+        <button class="btn btn-primary btn-sm" :disabled="isCreating" @click="goCreate">
+          {{ isCreating ? '建立中...' : '+ 建立新排程' }}
+        </button>
       </div>
 
       <div v-if="routinesLoading" class="status-box status-loading">載入排程中...</div>
@@ -147,11 +149,7 @@
             >#{{ tag }}</span>
           </div>
 
-          <div class="routine-card__meta">
-            <span :class="['badge', routine.created_by_ai ? 'badge-gold' : 'badge-muted']">
-              {{ routine.created_by_ai ? '🤖 AI 生成' : '✋ 手動建立' }}
-            </span>
-          </div>
+
         </div>
       </div>
     </section>
@@ -265,7 +263,9 @@ const getRoutineThemeTags = (routine: RoutineListItem) => {
   return Array.from(new Set([...predefined, ...custom]))
 }
 
-const goCreate = () => {
+const isCreating = ref(false)
+
+const goCreate = async () => {
   if (routines.value.length >= MAX_ROUTINES) {
     limitNoticeText.value = `目前已有 ${MAX_ROUTINES} 個保養規劃，已達上限。請先刪除其中一個再新增。`
     showLimitNotice.value = true
@@ -273,7 +273,25 @@ const goCreate = () => {
     limitTimer = setTimeout(() => { showLimitNotice.value = false; limitTimer = null }, 10000)
     return
   }
-  router.push('/routines/new')
+  if (isCreating.value) return
+  isCreating.value = true
+  try {
+    const res = await $fetch<{ success: boolean; data: { routine_id?: string } }>('/api/routines/create', {
+      method: 'POST',
+      body: { useAI: false }
+    })
+    if (res.success && res.data?.routine_id) {
+      router.push(`/routines/${res.data.routine_id}`)
+    }
+  } catch (e: any) {
+    const msg = e.data?.statusMessage || e.message || '建立失敗'
+    limitNoticeText.value = `❌ ${msg}`
+    showLimitNotice.value = true
+    if (limitTimer) clearTimeout(limitTimer)
+    limitTimer = setTimeout(() => { showLimitNotice.value = false; limitTimer = null }, 8000)
+  } finally {
+    isCreating.value = false
+  }
 }
 
 const goEdit = (id: string) => router.push(`/routines/${id}`)

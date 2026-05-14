@@ -4,26 +4,6 @@
  */
 
 /**
- * 排程配置偏好
- */
-export interface RoutinePreferences {
-  // 保養複雜度：'minimal' 簡易 | 'standard' 標準 | 'comprehensive' 完整
-  complexity: 'minimal' | 'standard' | 'comprehensive';
-  
-  // 針對的肌膚問題
-  targetIssues: string[];
-  
-  // 優先順序：'speed' 快速 | 'effectiveness' 有效性 | 'affordability' 經濟
-  priority: 'speed' | 'effectiveness' | 'affordability';
-  
-  // 是否允許推薦新產品
-  allowRecommendations: boolean;
-  
-  // 推薦邊界：產品數量下限，少於此時建議推薦
-  recommendThreshold: number;
-}
-
-/**
  * 使用者個人資料（簡化版）
  */
 export interface UserProfileData {
@@ -170,21 +150,3 @@ export interface WeeklyRoutine {
   conflicts_by_day?: Record<number, { rule: string; message: string }[]>;
 }
 
-/**
- * Gemini API 回應結構（預期的 JSON 格式）
- */
-export interface GeminiRoutineResponse {
-  name: string;
-  description: string;
-  items: Array<{
-    day_of_week: number;
-    time_of_day: 'morning' | 'evening';
-    sequence_order: number;
-    product_name: string;
-    product_category: string;
-    ingredients: string[];
-    is_recommendation: boolean;
-    recommendation_reason?: string;
-    notes?: string;
-  }>;
-}

@@ -1,6 +1,5 @@
 import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server';
-import type { UserProfileData, CabinetProduct, WeeklyRoutine, GeminiRoutineResponse, RoutineItem, RoutinePreferences } from '~/types/routine';
-import { getAIService } from '~/server/services/aiService';
+import type { UserProfileData, CabinetProduct, WeeklyRoutine } from '~/types/routine';
 
 /**
  * POST /api/routines/create
@@ -46,18 +45,6 @@ export default defineEventHandler(async (event) => {
   // ==================
   // 2. 取得請求 body
   // ==================
-  const body = (await readBody(event)) || {};
-  const { useAI = true, preferences } = body;
-
-  // 使用傳入的 preferences 或預設值
-  const userPreferences: RoutinePreferences = preferences || {
-    complexity: 'standard',
-    targetIssues: [],
-    priority: 'effectiveness',
-    allowRecommendations: true,
-    recommendThreshold: 3
-  };
-
   // ==================
   // 3. 初始化 Supabase 客戶端
   // ==================
@@ -134,93 +121,23 @@ export default defineEventHandler(async (event) => {
 
   const products: CabinetProduct[] = cabinetData || [];
 
-  console.log(`[Routines Create] 用戶 ${userId} 使用 AI=${useAI}，產品數=${products.length}，配置=${JSON.stringify(userPreferences)}`);
+  console.log(`[Routines Create] 用戶 ${userId}，產品數=${products.length}`);
 
-  let weeklyRoutine: WeeklyRoutine;
 
-  if (useAI) {
-    // ==================
-    // 6. 使用 AIService 生成排程
-    // ==================
-    try {
-      const aiService = getAIService();
-      const geminiResponse = await aiService.generateDetailedRoutine(
-        userProfile,
-        products,
-        userPreferences
-      );
-      const geminiResponseAny = geminiResponse as GeminiRoutineResponse & {
-        routine_name?: string;
-        routine_description?: string;
-      };
+  // ==================
+  // 6. 建立空排程（由使用者自行拖拽填入產品）
+  // ==================
+  const weeklyRoutine: WeeklyRoutine = {
+    name: '我的保養規劃',
+    description: '',
+    items: [],
+    recommendations: [],
+    is_active: true,
+    created_by_ai: false,
+    _empty_reason: products.length === 0 ? 'no_products' : 'no_items',
+  };
 
-      weeklyRoutine = {
-        name: geminiResponseAny.routine_name || geminiResponse.name || '我的每週保養規劃',
-        description: geminiResponseAny.routine_description || geminiResponse.description || '',
-        items: geminiResponse.items.map((item, idx) => ({
-          day_of_week: item.day_of_week,
-          time_of_day: item.time_of_day,
-          sequence_order: item.sequence_order,
-          product_name: item.product_name,
-          product_category: item.product_category,
-          ingredients: item.ingredients || [],
-          is_recommendation: item.is_recommendation,
-          recommendation_reason: item.recommendation_reason,
-          notes: item.notes
-        })),
-        is_active: true,
-        created_by_ai: true,
-        gemini_prompt_used: aiService.generateDetailedRoutinePrompt(
-          userProfile,
-          products,
-          userPreferences
-        )
-      };
-
-      console.log('[Routines Create] AI 生成成功，項目數:', weeklyRoutine.items.length);
-    } catch (geminiError: any) {
-      console.error('[AIService Error]:', geminiError);
-      throw createError({
-        statusCode: 500,
-        statusMessage: 'AI 生成推薦失敗: ' + (geminiError.message || '未知錯誤')
-      });
-    }
-  } else {
-    // ==================
-    // 6. 手動組裝預設排程（不使用 AI）
-    // ==================
-    weeklyRoutine = generateDefaultRoutine(userProfile, products);
-  }
-
-  const normalizeName = (name?: string) => String(name || '').trim().toLowerCase();
-
-  const cabinetProductNames = new Set(
-    products
-      .map(product => normalizeName(product.product_name))
-      .filter(Boolean)
-  );
-
-  // product_name → user_cabinet.id，批次 lookup 用
-  const nameToId = new Map<string, string>(
-    products.map(p => [normalizeName(p.product_name), p.id])
-  );
-
-  const scheduleItems = weeklyRoutine.items
-    .filter(item => cabinetProductNames.has(normalizeName(item.product_name)))
-    .map(item => ({
-      ...item,
-      is_recommendation: false
-    }));
-
-  if (scheduleItems.length === 0 && products.length > 0) {
-    weeklyRoutine.items = generateDefaultRoutine(userProfile, products).items;
-  } else {
-    weeklyRoutine.items = scheduleItems;
-  }
-
-  weeklyRoutine.recommendations = [];
-
-  console.log(`[Routines Create] 生成完成，排程項目數=${weeklyRoutine.items.length}`);
+  console.log(`[Routines Create] 建立空排程完成`);
 
   // ==================
   // 8.5 檢查並禁用現有的 active routine
@@ -338,98 +255,3 @@ export default defineEventHandler(async (event) => {
     });
   }
 });
-
-// ==================
-// 輔助函數
-// ==================
-
-/**
- * 嘗試解析產品成分
- */
-function tryParseIngredients(rawIngredients: string | null): string[] {
-  if (!rawIngredients) return [];
-
-  try {
-    const parsed = JSON.parse(rawIngredients);
-    if (Array.isArray(parsed)) {
-      return parsed.map(i => typeof i === 'string' ? i : String(i)).slice(0, 10);
-    }
-  } catch {
-    // 不是有效的 JSON，嘗試其他格式
-  }
-
-  // 嘗試逗號分隔
-  if (typeof rawIngredients === 'string' && rawIngredients.includes(',')) {
-    return rawIngredients.split(',').map(s => s.trim()).filter(s => s.length > 0).slice(0, 10);
-  }
-
-  return [rawIngredients];
-}
-
-/**
- * 生成預設排程（不使用 AI）
- */
-function generateDefaultRoutine(profile: UserProfileData, products: CabinetProduct[]): WeeklyRoutine {
-  const items: RoutineItem[] = [];
-
-  // 特殊處理：無產品情況
-  if (!products || products.length === 0) {
-    // 返回空排程，讓前端提示用戶添加產品
-    return {
-      name: '預設保養規劃（待補充產品）',
-      description: '您尚未添加任何保養品。請先前往「保養品櫃」添加產品。',
-      items: [],
-      is_active: true,
-      created_by_ai: false,
-      _empty_reason: 'no_products' // 用於前端識別原因
-    };
-  }
-
-  // 改進的分配邏輯：支持任意數量產品
-  const daysOfWeek = 7;
-  let productIndex = 0;
-
-  for (let day = 0; day < daysOfWeek; day++) {
-    // 早晨：始終分配
-    const morningProduct = products[productIndex % products.length]!;
-    items.push({
-      day_of_week: day,
-      time_of_day: 'morning',
-      sequence_order: 0,
-      product_name: morningProduct.product_name,
-      product_category: morningProduct.product_category,
-      ingredients: morningProduct ? (typeof morningProduct.raw_ingredients === 'string' 
-        ? tryParseIngredients(morningProduct.raw_ingredients) 
-        : []) : [],
-      is_recommendation: false
-    });
-
-    productIndex++;
-
-    // 晚間：始終分配（使用下一個產品）
-    const eveningProduct = products[productIndex % products.length]!;
-    items.push({
-      day_of_week: day,
-      time_of_day: 'evening',
-      sequence_order: 0,
-      product_name: eveningProduct.product_name,
-      product_category: eveningProduct.product_category,
-      ingredients: eveningProduct ? (typeof eveningProduct.raw_ingredients === 'string'
-        ? tryParseIngredients(eveningProduct.raw_ingredients)
-        : []) : [],
-      is_recommendation: false
-    });
-
-    productIndex++;
-  }
-
-  return {
-    name: '預設保養規劃',
-    description: profile.base_skin_type
-      ? `針對${profile.base_skin_type}膚質的每週保養規劃`
-      : '您的每週保養規劃',
-    items,
-    is_active: true,
-    created_by_ai: false
-  };
-}

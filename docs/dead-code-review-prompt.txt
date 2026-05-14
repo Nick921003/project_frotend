@@ -1,0 +1,60 @@
+以下是我的 Nuxt 4 + Vue 3 專案（project_frontend）中待確認的 dead code 清單，請你逐項驗證是否確實無用，並給出「可安全刪除 / 請保留 / 需進一步確認」三種判斷，以及刪除的具體步驟。
+
+專案技術棧：Nuxt 4、Vue 3 Composition API、Supabase、Pinia
+
+=== Dead Code 清單 ===
+
+#1
+位置：pages/beauty-plan.vue
+目標：getRoutineThemeTags() 函數 + import { AVAILABLE_ROUTINE_THEMES } from '~/types/routine'
+功能：計算 routine card 上的主題標籤 label 陣列
+懷疑原因：DB 的 routines table 沒有 theme_ids 欄位，函數永遠回傳空陣列，template 的 v-if 永不觸發
+
+#2
+位置：pages/beauty-plan.vue
+目標：template 中 <div v-if="getRoutineThemeTags(routine).length > 0" class="theme-tags"> 整塊
+功能：顯示 routine 主題 chip 標籤
+懷疑原因：承 #1
+
+#3
+位置：pages/beauty-plan.vue
+目標：CSS .theme-tags、.theme-tag、.routine-card__meta、.badge-gold、.badge-muted
+功能：Badge / 標籤視覺樣式
+懷疑原因：對應 template 已移除
+
+#4
+位置：pages/beauty-plan.vue
+目標：RoutineListItem interface 中的 created_by_ai?: boolean | null 欄位
+功能：判斷是否 AI 生成，用於顯示不同 Badge
+懷疑原因：唯一消費端（badge template）已移除
+
+#5
+位置：server/api/routines/create.post.ts
+目標：JSDoc 第 8–14 行的 useAI: boolean 說明文字
+功能：說明 API 支援 AI 模式
+懷疑原因：readBody() 從未讀取此參數，AI 生成路徑已移除
+
+#6
+位置：server/api/routines/create.post.ts + types/routine.ts
+目標：_empty_reason: 'no_products' | 'no_items' 欄位
+功能：讓前端區分空排程原因
+懷疑原因：唯一消費端「排程還是空的」alert UI 已移除
+
+#7
+位置：composables/useCreateRoutine.ts
+目標：reset() 函數（第 11–13 行）
+功能：重置 routine ref 為 null
+懷疑原因：全專案搜尋無任何呼叫端
+
+#8
+位置：server/api/routines/active.get.ts
+目標：整個檔案（GET /api/routines/active）
+功能：取得當前啟用的排程
+懷疑原因：全專案 pages/ 與 composables/ 均無任何 $fetch('/api/routines/active') 呼叫
+
+=== 驗證請求 ===
+
+1. 請 grep 確認每一項的引用數（0 = 可刪）
+2. AVAILABLE_ROUTINE_THEMES 是否有其他消費端（如 [id].vue、RoutineHeader.vue）
+3. active.get.ts 是否可能被 Nuxt auto-import 或 middleware 隱式使用
+4. 刪除 #6 的 _empty_reason 後，create.post.ts 是否還有其他地方參照此欄位需一併清除

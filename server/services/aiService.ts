@@ -9,7 +9,7 @@
  * 目的：將 AI 邏輯獨立出來，便於版本控制、測試和升級
  */
 
-import type { UserProfileData, CabinetProduct, RoutinePreferences, GeminiRoutineResponse } from '~/types/routine';
+import type { UserProfileData, CabinetProduct } from '~/types/routine';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = 'gemini-2.5-flash';
@@ -42,254 +42,6 @@ export class AIService {
     
     if (!this.config.apiKey) {
       throw new Error('GEMINI_API_KEY 環境變數未設置');
-    }
-  }
-
-  /**
-   * 生成排程的詳細 Prompt（包含複雜度、優先順序、產品分析等）
-   * 這是比基礎 generateRoutinePrompt 更詳細的版本
-   */
-  generateDetailedRoutinePrompt(
-    profile: UserProfileData,
-    products: CabinetProduct[],
-    preferences: RoutinePreferences,
-    analysisResults?: Record<string, any>
-  ): string {
-    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    
-    let profileSummary = `
-=== USER PROFILE ===
-- Skin Type: ${profile.base_skin_type}
-- Gender: ${profile.gender || 'Not specified'}
-- Birth Year: ${profile.birth_year || 'Not specified'}
-- Age: ${profile.birth_year ? new Date().getFullYear() - profile.birth_year : 'Unknown'}
-- Skin Issues/Concerns: ${profile.issues || 'None specified'}
-`;
-
-    let productSummary = `
-=== EXISTING PRODUCTS ===
-Total Products: ${products.length}
-
-`;
-
-    if (products.length > 0) {
-      productSummary += products.map((p, i) => {
-        const ingredients = this.tryParseIngredients(p.raw_ingredients);
-        return `
-${i + 1}. ${p.product_name}
-   Category: ${p.product_category}
-   Ingredients: ${ingredients.join(', ') || 'Unknown'}
-   Analysis: ${p.analysis_result ? JSON.stringify(p.analysis_result) : 'Not analyzed'}
-`;
-      }).join('');
-    } else {
-      productSummary += 'No products in cabinet.';
-    }
-
-    // ==================
-    // 基於 preferences 生成配置指令
-    // ==================
-    let preferenceInstructions = `
-=== USER PREFERENCES (THIS SESSION) ===
-- Routine Complexity: ${preferences.complexity}
-  ${preferences.complexity === 'minimal' ? '  (Focus on essential steps: 3 products per day max)' : preferences.complexity === 'standard' ? '  (Balance between efficacy and simplicity: 5 products per day)' : '  (Comprehensive routine with all beneficial steps: 7+ products per day)'}
-- Target Issues to Address: ${preferences.targetIssues.length > 0 ? preferences.targetIssues.join(', ') : 'General skincare'}
-- Priority: ${preferences.priority}
-  ${preferences.priority === 'speed' ? '  (Minimize routine time, fewer steps)' : preferences.priority === 'affordability' ? '  (Use existing products efficiently, minimal purchases)' : '  (Maximum effectiveness, use best products for results)'}
-- Allow Recommendations: ${preferences.allowRecommendations ? 'YES' : 'NO'}
-  ${preferences.allowRecommendations ? `(Recommend missing products when important ingredients are lacking. Suggest if ${preferences.recommendThreshold}+ issues cannot be addressed)` : '(Only use existing products, no recommendations)'}
-`;
-
-    // 複雜度相關指令
-    let complexityInstruction = '';
-    if (preferences.complexity === 'minimal') {
-      complexityInstruction = `
-COMPLEXITY INSTRUCTION: Create a MINIMAL routine.
-- Maximum 3 products per day (morning) and 3 products per day (evening)
-- Focus on essential steps: Cleanser → Moisturizer (+ optional targeted treatment)
-- Skip secondary steps like toners, essences, masks unless addressing specific issues`;
-    } else if (preferences.complexity === 'standard') {
-      complexityInstruction = `
-COMPLEXITY INSTRUCTION: Create a STANDARD routine.
-- 4-5 products per day for morning and evening routines
-- Include: Cleanser → Toner/Essence → Serum/Treatment → Moisturizer → Sunscreen (AM only)
-- Balance between effectiveness and simplicity`;
-    } else {
-      complexityInstruction = `
-COMPLEXITY INSTRUCTION: Create a COMPREHENSIVE routine.
-- 6-8+ products per day (morning) and 7-10 products per day (evening)
-- Include all beneficial steps: Cleanser → Toner → Essence → Multiple Serums → Sheet Masks → Moisturizer → Eye Cream → Sunscreen (AM) → Sleeping Mask (PM)
-- Maximize skin benefits with layered active ingredients`;
-    }
-
-    // 優先順序相關指令
-    let priorityInstruction = '';
-    if (preferences.priority === 'speed') {
-      priorityInstruction = `
-PRIORITY INSTRUCTION: MINIMIZE TIME
-- Reduce multi-step routines, prefer combo products (e.g., toner+essence, moisturizer+SPF)
-- Use only proven effective products from their cabinet
-- Avoid lengthy application steps`;
-    } else if (preferences.priority === 'affordability') {
-      priorityInstruction = `
-PRIORITY INSTRUCTION: MAXIMIZE EXISTING PRODUCTS
-- Use all products from their cabinet as much as possible
-- Only recommend products if critical ingredients are completely missing
-- Prefer budget-friendly alternatives or ingredient combinations`;
-    } else {
-      priorityInstruction = `
-PRIORITY INSTRUCTION: MAXIMUM EFFECTIVENESS
-- Prioritize products with proven active ingredients (retinol, niacinamide, hyaluronic acid, peptides, etc.)
-- Recommend premium products if gaps exist in efficacy
-- Combine complementary ingredients for synergistic effects`;
-    }
-
-    const prompt = `
-You are a professional skincare formulation expert and dermatologist. Your task is to create a personalized weekly skincare routine for a user.
-
-${profileSummary}
-
-${productSummary}
-
-${preferenceInstructions}
-
-=== INSTRUCTIONS ===
-Based on the user's skin profile, existing products, and THIS SESSION's preferences, create a detailed weekly skincare routine (Monday-Sunday, Morning & Evening).
-
-${complexityInstruction}
-
-${priorityInstruction}
-
-IMPORTANT RULES:
-1. Each day has a "morning" and "evening" routine
-2. For each timeslot, list the products in the order they should be applied (0-based sequence_order)
-3. If user's skin issues CANNOT be adequately addressed with existing products:
-   ${preferences.allowRecommendations ? '   - Generate ingredient-focused recommendations (e.g., "Niacinamide Serum", "Salicylic Acid Toner") instead of full product names' : '   - Only use existing products, do NOT create recommendations'}
-4. Mark recommendation items with is_recommendation: true and explain their benefits in recommendation_reason
-5. Each item must include the product name, category, and detected/relevant ingredients
-6. Target Issues (${preferences.targetIssues.join(', ') || 'general'}) should be prioritized in the routine${preferences.allowRecommendations ? '' : ' using only existing products'}
-7. REQUIRED: Every item MUST have a non-empty "notes" field explaining WHY this product is placed at this step and time. The notes should answer: step order rationale, ingredient layering logic, and any time-of-day restrictions. Write in Traditional Chinese.
-
-NOTES FORMAT RULES:
-- Always follow this pattern: "[時段]第[N]步：[原因]；[限制或補充說明]"
-- Examples:
-  - "早晨第一步：pH 值偏低，需在其他保養前使用以確保成分吸收最佳化"
-  - "早晨第三步：含 SPF，需在保濕後日光前使用；避免晚間使用因含光敏感成分"
-  - "晚間第二步：含 Retinol，夜間修復效果最佳；避免早晨使用因對光線敏感"
-  - "晚間第四步：質地最厚，需最後鎖水；含 Niacinamide 可協助縮小毛孔"
-- Mention: ingredient reasons, layering logic (water→oil, thin→thick), time restrictions (photosensitivity, stability)
-
-RESPONSE FORMAT:
-You MUST respond with ONLY valid JSON (no markdown, no code blocks), with this exact structure:
-
-{
-  "name": "My Weekly Skincare Routine",
-  "description": "A personalized routine based on your profile",
-  "items": [
-    {
-      "day_of_week": 0,
-      "time_of_day": "morning",
-      "sequence_order": 0,
-      "product_name": "Product Name",
-      "product_category": "Cleanser|Toner|Essence|Serum|Sheet Mask|Cream|Sunscreen|etc",
-      "ingredients": ["ingredient1", "ingredient2"],
-      "is_recommendation": false,
-      "recommendation_reason": null,
-      "notes": "早晨第一步：清潔面部油脂與髒污，為後續保養打底；pH 偏弱酸有助維持肌膚屏障"
-    },
-    ...
-  ]
-}
-
-EXAMPLES OF INGREDIENT RECOMMENDATIONS (if allowRecommendations=true):
-- If user has acne but lacks BHAs: {"product_name": "Salicylic Acid Essence", "is_recommendation": true, "recommendation_reason": "2-3次/週 使用，深層清潔毛孔、減少黑頭，改善粉刺"}
-- If user has aging concerns but no retinol: {"product_name": "Retinol Serum", "is_recommendation": true, "recommendation_reason": "晚間使用，促進膠原蛋白生成、減少細紋，改善肌膚彈性"}
-- If user lacks hydration boosters: {"product_name": "Hyaluronic Acid Serum", "is_recommendation": true, "recommendation_reason": "強化肌膚保水力，特別適合乾性膚質，改善繃緊感"}
-
-OUTPUT LANGUAGE:
-- Use Traditional Chinese (繁體中文) for all product_name, recommendation_reason, and notes fields
-- Make recommendations sound natural and friendly, not mechanical
-- Provide specific usage frequency and benefits, not just generic features
-- Drop excessive technical jargon, keep it relatable
-
-Now, create the weekly routine as JSON only:
-`;
-
-    return prompt;
-  }
-
-  /**
-   * 嘗試解析產品成分（輔助方法）
-   */
-  private tryParseIngredients(rawIngredients: string | null): string[] {
-    if (!rawIngredients) return [];
-
-    try {
-      const parsed = JSON.parse(rawIngredients);
-      if (Array.isArray(parsed)) {
-        return parsed.map(i => typeof i === 'string' ? i : String(i)).slice(0, 10);
-      }
-    } catch {
-      // 不是有效的 JSON，嘗試其他格式
-    }
-
-    // 嘗試逗號分隔
-    if (typeof rawIngredients === 'string' && rawIngredients.includes(',')) {
-      return rawIngredients.split(',').map(s => s.trim()).filter(s => s.length > 0).slice(0, 10);
-    }
-
-    return [rawIngredients];
-  }
-
-  /**
-   * 調用 Gemini API 生成排程（詳細版）
-   */
-  async generateDetailedRoutine(
-    profile: UserProfileData,
-    products: CabinetProduct[],
-    preferences: RoutinePreferences
-  ): Promise<GeminiRoutineResponse> {
-    try {
-      // 生成詳細 prompt
-      const prompt = this.generateDetailedRoutinePrompt(profile, products, preferences);
-
-      console.log('[AIService] 開始調用 Gemini API 生成詳細排程');
-      console.log('[AIService] Model:', this.config.model);
-
-      // 調用 Gemini API
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(this.config.apiKey);
-      const model = genAI.getGenerativeModel({
-        model: this.config.model,
-        generationConfig: {
-          temperature: 0.3
-        }
-      });
-
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text();
-
-      console.log('[AIService] 獲得回應，開始解析...');
-
-      // 解析 JSON
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('無法從回應中提取 JSON');
-      }
-
-      const parsedResponse = JSON.parse(jsonMatch[0]) as GeminiRoutineResponse;
-
-      // 驗證響應結構
-      if (!parsedResponse.items || !Array.isArray(parsedResponse.items)) {
-        throw new Error('回應中缺少 items 陣列');
-      }
-
-      console.log('[AIService] 解析成功，生成項目數:', parsedResponse.items.length);
-      
-      return parsedResponse;
-    } catch (error: any) {
-      console.error('[AIService] 錯誤:', error.message);
-      throw new Error(`AI 生成失敗: ${error.message}`);
     }
   }
 
@@ -435,6 +187,18 @@ ${knownContext}${unknownContext}
       console.error('[AIService] 生成總結錯誤:', error.message);
       throw new Error(`生成產品評語失敗: ${error.message}`);
     }
+  }
+
+  private tryParseIngredients(rawIngredients: string | null): string[] {
+    if (!rawIngredients) return [];
+    try {
+      const parsed = JSON.parse(rawIngredients);
+      if (Array.isArray(parsed)) return parsed.map(i => typeof i === 'string' ? i : String(i)).slice(0, 10);
+    } catch {}
+    if (typeof rawIngredients === 'string' && rawIngredients.includes(',')) {
+      return rawIngredients.split(',').map(s => s.trim()).filter(s => s.length > 0).slice(0, 10);
+    }
+    return [rawIngredients];
   }
 
   /**

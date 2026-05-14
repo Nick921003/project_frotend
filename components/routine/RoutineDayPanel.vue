@@ -100,7 +100,7 @@
                   class="btn-checkin"
                   :class="{ 'is-checked': checkedItemIds.has(item.id) }"
                   title="今日打卡"
-                >{{ checkedItemIds.has(item.id) ? '✅' : '⬜' }}</button>
+                ><span class="checkin-icon" /></button>
                 <button
                   @click="$emit('toggle-item-lock', item)"
                   class="btn-lock"
@@ -183,7 +183,7 @@
                   class="btn-checkin"
                   :class="{ 'is-checked': checkedItemIds.has(item.id) }"
                   title="今日打卡"
-                >{{ checkedItemIds.has(item.id) ? '✅' : '⬜' }}</button>
+                ><span class="checkin-icon" /></button>
                 <button
                   @click="$emit('toggle-item-lock', item)"
                   class="btn-lock"
@@ -340,7 +340,11 @@ const getEveningItems = (dayIdx: number) =>
 .btn-notes:hover, .btn-notes.active { background: var(--color-accent-light); border-color: var(--color-accent); color: var(--color-accent); }
 .item-notes { margin-top: 6px; padding: 6px 10px; background: var(--color-surface-alt); border-left: 2px solid var(--color-accent); border-radius: 0 4px 4px 0; font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; }
 
-.btn-checkin { background: none; border: none; cursor: pointer; font-size: 15px; padding: 2px 4px; line-height: 1; }
+.btn-checkin { background: none; border: none; cursor: pointer; padding: 2px; display: flex; align-items: center; justify-content: center; transition: transform 0.15s; }
+.btn-checkin:hover { transform: scale(1.1); }
+.checkin-icon { display: block; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--color-border); background: transparent; transition: background 0.18s, border-color 0.18s; position: relative; }
+.btn-checkin.is-checked .checkin-icon { background: var(--color-sage); border-color: var(--color-sage); }
+.btn-checkin.is-checked .checkin-icon::after { content: ''; position: absolute; top: 3px; left: 5px; width: 6px; height: 9px; border: 2px solid #fff; border-top: none; border-left: none; transform: rotate(45deg); }
 .btn-lock { background: none; border: none; cursor: pointer; padding: 2px; font-size: 14px; opacity: 0.7; transition: opacity 0.2s; }
 .btn-lock:hover { opacity: 1; }
 .btn-remove { background: var(--color-red-light); color: var(--color-red); border: none; border-radius: var(--radius-sm); cursor: pointer; padding: 2px 8px; font-weight: 700; font-size: 14px; transition: background 0.2s; }

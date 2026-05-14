@@ -176,6 +176,8 @@ import { onMounted, ref, watchEffect, computed } from 'vue'
 import { PRODUCT_CATEGORIES, resolveProductCategory } from '~/utils/productCategories'
 import { useUserProfile } from '~/stores/useUserProfile'
 
+const user = useSupabaseUser()
+
 // 進階模式：從 store 讀取，控制是否隱藏膚質地雷警告
 const userProfileStore = useUserProfile()
 const suppressWarnings = computed(() => userProfileStore.profile?.suppress_safety_warnings === true)
@@ -186,8 +188,6 @@ watchEffect(() => {
     userProfileStore.fetchUserProfile()
   }
 })
-
-const user = useSupabaseUser()
 const supabase = useSupabaseClient()
 const route = useRoute()
 const router = useRouter()

@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
   // 3. 查詢使用者 profile
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, base_skin_type, age_group, gender, birth_year, issues, created_at, updated_at')
+    .select('id, base_skin_type, age_group, gender, birth_year, issues, suppress_safety_warnings, created_at, updated_at')
     .eq('id', userId)
     .single();
 
@@ -54,6 +54,7 @@ export default defineEventHandler(async (event) => {
       gender: data.gender || null,
       birth_year: data.birth_year || null,
       issues: data.issues || null,
+      suppress_safety_warnings: data.suppress_safety_warnings ?? false,
       created_at: data.created_at,
       updated_at: data.updated_at
     }

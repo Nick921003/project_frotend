@@ -23,8 +23,9 @@ export default defineEventHandler(async (event) => {
   const gender = body.gender;
   const issues = body.issues;
   const birthYear = body.birth_year ?? body.birthYear;
+  const suppressSafetyWarnings = body.suppress_safety_warnings;
 
-  const hasAnyField = [skinType, ageGroup, gender, issues, birthYear].some(v => v !== undefined);
+  const hasAnyField = [skinType, ageGroup, gender, issues, birthYear, suppressSafetyWarnings].some(v => v !== undefined);
   if (!hasAnyField) {
     throw createError({ statusCode: 400, statusMessage: '至少需要提供一個欄位進行更新' });
   }
@@ -73,6 +74,9 @@ export default defineEventHandler(async (event) => {
   if (issues !== undefined) {
     updateData.issues = issues || null;
   }
+  if (suppressSafetyWarnings !== undefined) {
+    updateData.suppress_safety_warnings = Boolean(suppressSafetyWarnings);
+  }
 
   // 更新或插入用戶資料
   let result;
@@ -116,6 +120,9 @@ export default defineEventHandler(async (event) => {
     }
     if (issues !== undefined) {
       insertData.issues = issues || null;
+    }
+    if (suppressSafetyWarnings !== undefined) {
+      insertData.suppress_safety_warnings = Boolean(suppressSafetyWarnings);
     }
 
     const { data, error } = await (supabase as any)

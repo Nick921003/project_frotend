@@ -11,6 +11,7 @@ export interface UserProfile {
   gender: 'male' | 'female' | 'other' | null;
   birth_year: number | null;
   issues: string | null; // JSON 字串或逗號分隔
+  suppress_safety_warnings: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -97,13 +98,15 @@ export const useUserProfile = defineStore('userProfile', () => {
     birthYear?: number | null;
     issues?: string | null;
     gender?: 'male' | 'female' | 'other' | null;
+    suppress_safety_warnings?: boolean;
   }) => {
     const payload: Record<string, any> = {
       base_skin_type: data.base_skin_type ?? data.skinType,
       age_group: data.age_group ?? data.ageGroup,
       birth_year: data.birth_year ?? data.birthYear,
       gender: data.gender,
-      issues: data.issues
+      issues: data.issues,
+      suppress_safety_warnings: data.suppress_safety_warnings
     };
 
     Object.keys(payload).forEach((key) => {

@@ -52,6 +52,18 @@
           ></textarea>
         </div>
 
+        <div class="form-group">
+          <label class="form-label">進階使用者模式</label>
+          <p class="hint-text">開啟後，分析頁的「膚質地雷」提示將隱藏。法規禁用成分警告不受影響。</p>
+          <label class="toggle-switch">
+            <input type="checkbox" v-model="formData.suppressSafetyWarnings" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-label">
+              {{ formData.suppressSafetyWarnings ? '已開啟（隱藏膚質提示）' : '關閉（顯示所有警告）' }}
+            </span>
+          </label>
+        </div>
+
         <div class="form-footer">
           <button type="submit" class="btn btn-primary">儲存修改</button>
           <span v-if="successMessage" class="feedback feedback--success">✅ {{ successMessage }}</span>
@@ -74,7 +86,8 @@ const formData = ref({
   skinType: '',
   ageGroup: '',
   gender: '' as Gender,
-  issues: ''
+  issues: '',
+  suppressSafetyWarnings: false
 })
 
 const successMessage = ref('')
@@ -87,7 +100,8 @@ const fillFormFromStore = () => {
     skinType: profile.base_skin_type || '',
     ageGroup: profile.age_group || '',
     gender: (profile.gender || '') as Gender,
-    issues: profile.issues || ''
+    issues: profile.issues || '',
+    suppressSafetyWarnings: profile.suppress_safety_warnings ?? false
   }
 }
 
@@ -102,7 +116,8 @@ const handleSubmit = async () => {
       base_skin_type: formData.value.skinType,
       age_group: formData.value.ageGroup || null,
       gender: (formData.value.gender || null) as 'male' | 'female' | 'other' | null,
-      issues: formData.value.issues || null
+      issues: formData.value.issues || null,
+      suppress_safety_warnings: formData.value.suppressSafetyWarnings
     })
 
     if (userProfileStore.error) throw new Error(userProfileStore.error)
@@ -155,4 +170,25 @@ onMounted(async () => {
 
 .feedback--success { color: var(--color-sage); }
 .feedback--error   { color: var(--color-red); }
+
+.toggle-switch { display: flex; align-items: center; gap: var(--space-2); cursor: pointer; }
+.toggle-switch input { display: none; }
+.toggle-track {
+  width: 40px; height: 22px;
+  background: var(--color-border);
+  border-radius: 11px;
+  position: relative;
+  transition: background 0.2s;
+}
+.toggle-switch input:checked ~ .toggle-track { background: var(--color-sage); }
+.toggle-thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 16px; height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  transition: left 0.2s;
+}
+.toggle-switch input:checked ~ .toggle-track .toggle-thumb { left: 21px; }
+.toggle-label { font-size: 13px; color: var(--color-text-secondary); }
 </style>

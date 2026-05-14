@@ -136,7 +136,7 @@
           </div>
 
           <div
-            v-if="result.data.analysis.skinTypeAlerts.length > 0"
+            v-if="!suppressWarnings && result.data.analysis.skinTypeAlerts.length > 0"
             class="alert-block alert-yellow"
           >
             <h4>🟡 膚質地雷（針對 {{ selectedSkinType }}）</h4>
@@ -172,8 +172,20 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watchEffect } from 'vue'
+import { onMounted, ref, watchEffect, computed } from 'vue'
 import { PRODUCT_CATEGORIES, resolveProductCategory } from '~/utils/productCategories'
+import { useUserProfile } from '~/stores/useUserProfile'
+
+// 進階模式：從 store 讀取，控制是否隱藏膚質地雷警告
+const userProfileStore = useUserProfile()
+const suppressWarnings = computed(() => userProfileStore.profile?.suppress_safety_warnings === true)
+
+// 若登入後 store 尚未載入 profile，則自動拉取（避免首次進入分析頁時警告仍顯示）
+watchEffect(() => {
+  if (user.value && !userProfileStore.profile && !userProfileStore.loading) {
+    userProfileStore.fetchUserProfile()
+  }
+})
 
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()

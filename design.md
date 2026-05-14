@@ -4,30 +4,43 @@
 
 乾淨、文學感、留白為主。莫蘭迪暖色系。無多餘裝飾，極少 icon，以文字和結構傳遞層次。
 
+> **修改 UI 前必讀此檔**，所有設計決策以此為唯一真相。CSS 變數定義於 `assets/css/main.css`。
+
 ---
 
 ## 色彩系統
 
 ```css
-/* 背景層次 */
---color-bg:         #F5F0EB;   /* 米白背景 */
---color-surface:    #EDE7DF;   /* 卡片/面板背景 */
---color-border:     #D4C8BC;   /* 邊框、分隔線 */
+/* 背景與表面 */
+--color-bg:           #F5F0EB;   /* 米白背景 */
+--color-surface:      #FFFFFF;   /* 卡片/面板背景 */
+--color-surface-alt:  #EDE7E0;   /* 次要表面 */
+--color-border:       #E0D6CC;   /* 邊框、分隔線 */
+--color-border-light: #EAE4DE;   /* 淡邊框 */
 
 /* 文字層次 */
 --color-text-primary:   #3D3530;   /* 主要文字 */
 --color-text-secondary: #7A6E68;   /* 次要文字、標籤 */
---color-text-muted:     #A89F98;   /* 灰暗說明文字 */
+--color-text-muted:     #B0A49C;   /* 灰暗說明文字 */
+
+/* 主強調色：霧玫 */
+--color-accent:       #C4958A;   /* primary CTA */
+--color-accent-hover: #A87B71;
+--color-accent-light: #F7EDEB;   /* focus ring / hover bg */
+
+/* 輔助色：暖米 */
+--color-warm:      #E8DDD0;
+--color-warm-dark: #C4B5A5;
 
 /* 語意色（莫蘭迪調） */
---color-sage:       #8FA89C;   /* 霧綠：安全、成功 */
---color-rose:       #C4958A;   /* 霧玫：警告、注意 */
---color-amber:      #C4A882;   /* 暖琥珀：提示 */
---color-critical:   #B07070;   /* 深玫紅：禁用成分 */
-
-/* 互動 */
---color-primary:       #8FA89C;
---color-primary-hover: #7A9690;
+--color-sage:         #8FA89C;   /* 霧綠：安全、成功 */
+--color-sage-light:   #EBF1EF;
+--color-amber:        #C49A6A;   /* 即將到期警告 */
+--color-amber-light:  #FAF0E5;
+--color-red:          #B86B6B;   /* 錯誤 / 禁用 / 過期 */
+--color-red-light:    #FAF0F0;
+--color-gold:         #C9A96E;   /* 金色提示 */
+--color-gold-light:   #FAF5EA;
 ```
 
 ---
@@ -35,88 +48,123 @@
 ## 字體
 
 ```css
---font-serif: 'Noto Serif TC', 'Georgia', serif;
---font-sans:  'Noto Sans TC', 'system-ui', sans-serif;
+--font-heading: 'Noto Serif TC', Georgia, serif;
+--font-body:    'Noto Sans TC', system-ui, sans-serif;
 ```
 
-- 頁面標題、區塊標題：serif
-- 內文、操作文字、表單：sans
-- INCI 成分名稱可用 monospace（選用）
+| 用途 | 字型 | 大小 |
+|------|------|------|
+| 頁面標題 | `font-heading` | 22px |
+| 區塊標題 | `font-heading` | 20px |
+| 小標題 | `font-heading` | 16px |
+| 內文 / 操作 / 表單 | `font-body` | 15px |
+| 輔助說明 | `font-body` | 12–14px，`--color-text-muted` |
 
 ---
 
-## 間距與圓角
+## 間距
 
 ```css
---space-xs:  4px;
---space-sm:  8px;
---space-md:  16px;
---space-lg:  24px;
---space-xl:  40px;
+--space-1:  4px;
+--space-2:  8px;
+--space-3:  12px;
+--space-4:  16px;
+--space-5:  20px;
+--space-6:  24px;
+--space-8:  32px;
+--space-10: 40px;
+--space-12: 48px;
+```
 
---radius-sm: 4px;
---radius-md: 8px;
+> **注意：`--space-sm` 不存在**，用 `--space-2`（8px）。`--space-xs/md/lg/xl` 亦已廢棄。
 
---border: 1px solid var(--color-border);
+---
+
+## 圓角 & 陰影
+
+```css
+--radius-sm:   4px;
+--radius-md:   8px;
+--radius-lg:   12px;
+--radius-pill: 20px;
+
+--shadow-sm: 0 1px 3px rgba(58, 50, 45, 0.08);
+--shadow-md: 0 4px 12px rgba(58, 50, 45, 0.10);
+--shadow-lg: 0 8px 24px rgba(58, 50, 45, 0.12);
 ```
 
 ---
 
 ## 元件規範
 
-### 卡片
+### 卡片（`.card`）
+
 ```css
-background: var(--color-surface);
-border: var(--border);
-border-radius: var(--radius-md);
-padding: var(--space-md) var(--space-lg);
-/* 無 box-shadow，層次靠背景色差異 */
+background:    var(--color-surface);
+border:        1px solid var(--color-border-light);
+border-radius: var(--radius-lg);   /* 12px */
+box-shadow:    var(--shadow-sm);
+padding:       var(--space-6);
 ```
 
 ### 按鈕
-| 類型 | 樣式 |
-|------|------|
-| 主要 | 霧綠底 `#8FA89C`，白字，無邊框 |
-| 次要 | 透明底，`--color-border` 邊框，深棕字 |
-| 危險 | 透明底，`--color-critical` 邊框和文字 |
 
-### 標籤（Tag）
-純文字，無 icon，小圓角背景。
+| Class | 樣式 |
+|-------|------|
+| `.btn-primary` | 霧玫底（`--color-accent`），白字 |
+| `.btn-ghost` | 透明底，霧玫邊框和文字 |
+| `.btn-secondary` | `--color-surface-alt` 底，`--color-text-secondary` 字 |
+| `.btn-danger` | `--color-red-light` 底，`--color-red` 字 |
+| `.btn-sm` | padding 縮小，13px |
+| `.btn-lg` | padding 放大，16px |
 
-| 類型 | 背景 | 文字 |
-|------|------|------|
-| 安全 | `#DFF0EA` | `#4A7C6F` |
-| 警告 | `#F5EAE0` | `#8C5C40` |
-| 禁用 | `#F0DEDE` | `#7C4040` |
-| 功效 | `#EAE8F0` | `#5C5080` |
+### 徽章（`.badge`）
+
+| Class | 背景 | 文字 |
+|-------|------|------|
+| `.badge-sage` | `--color-sage-light` | `--color-sage` |
+| `.badge-amber` | `--color-amber-light` | `--color-amber` |
+| `.badge-red` | `--color-red-light` | `--color-red` |
+| `.badge-gold` | `--color-gold-light` | `--color-gold` |
+| `.badge-muted` | `--color-surface-alt` | `--color-text-secondary` |
+
+### Alert 區塊（`.alert-block`）
+
+左側 4px 色條 + 淡色背景。
+Classes：`.alert-red` / `.alert-orange` / `.alert-yellow` / `.alert-green` / `.alert-gold`
+
+### 狀態區塊（`.status-box`）
+
+Classes：`.status-loading` / `.status-error` / `.status-success`
+
+### 表單
+
+- `label` → `.form-label`（14px, `--color-text-secondary`）
+- `input` → `.form-input`（focus ring 用 `--color-accent-light`）
+- 欄位包裝 → `.form-group`（下方 `--space-5` 間距）
 
 ---
 
 ## 版面原則
 
-1. **留白優先** — 區塊間距至少 `--space-lg`，重要分隔用 `--space-xl`
-2. **無 icon 原則** — 能用文字的不加 icon；只保留功能性符號（× 關閉、▾ 展開）
-3. **單欄為主** — 手機優先；桌機最多雙欄
-4. **字級層次**
-   - 頁面標題：`22px` serif
-   - 區塊標題：`16px` serif
-   - 內文：`14px` sans
-   - 輔助說明：`12px` sans，`--color-text-muted`
+1. **留白優先** — 區塊間距至少 `--space-6`，重要分隔用 `--space-8`
+2. **禁用 emoji 作為 icon** — 跨平台渲染不一致，改用 CSS 形狀或 SVG
+3. **單欄為主** — 手機優先；桌機最多雙欄（`.page-container` max-width 720px，wide 版 1200px）
+4. **不寫死顏色** — 一律用 CSS 變數
+5. **無 `--border` 快捷變數** — 直接寫 `1px solid var(--color-border)`
+
+---
+
+## CSS 入口
+
+`assets/css/main.css` — 全域變數與基礎元件定義於此，Nuxt 自動載入。
+
+Tailwind 橋接 token，新元件可用：`bg-surface`、`text-accent`、`border-border`、`font-heading`、`font-body`。設定檔：`tailwind.config.ts`（`preflight: false`）。
 
 ---
 
 ## 工作流程
 
-**改 UI 前先更新此檔**，確認設計決策後再動 CSS/Vue。
-design.md 是設計唯一真相來源。
-
-## CSS 入口
-
-`assets/css/main.css` — 全域變數定義在此，Nuxt 已自動載入。
-
-## 套用優先順序（第 4 週）
-
-1. `pages/products/[id]/edit.vue`
-2. `pages/index.vue`（Cabinet 列表）
-3. `pages/routines/[id].vue`
-4. `pages/profile.vue`
+1. **改 UI 前先讀此檔** — 確認用正確的 token 和 class
+2. 設計有更動 → 先更新 `design.md`，再動 CSS / Vue
+3. 新 token 要先加進 `main.css`，再在此文件同步

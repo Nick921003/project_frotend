@@ -32,6 +32,8 @@ export interface CabinetProduct {
   estimated_finish_days: number | null;
   purchase_purpose: string | null;
   user_notes: string | null;
+  expires_at: string | null;
+  expiry_status?: 'expired' | 'soon' | 'ok' | null; // API 計算，非資料庫儲存
 }
 
 /**

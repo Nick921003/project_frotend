@@ -52,6 +52,18 @@
           v-model="tracking.opened_at"
           type="date"
           class="form-input"
+          @change="autoCalcExpiry"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="expires_at">預估到期日</label>
+        <p class="hint-text">依類別自動推算（可手動調整）</p>
+        <input
+          id="expires_at"
+          v-model="tracking.expires_at"
+          type="date"
+          class="form-input"
         />
       </div>
 
@@ -168,10 +180,26 @@ const productId = route.params.id as string
 
 const tracking = reactive({
   opened_at: '' as string,
+  expires_at: '' as string,
   estimated_finish_days: null as number | null,
   purchase_purpose: '' as string,
   user_notes: '' as string
 })
+
+// PAO 開封後保存期限（月）對應各類別
+const PAO_MONTHS: Record<string, number> = {
+  '精華液': 6, '眼霜': 6, '去角質': 6,
+  '乳液': 12, '乳霜': 12, '面霜': 12, '防曬': 12
+}
+
+// 依開封日 + 類別自動推算到期日
+const autoCalcExpiry = () => {
+  if (!tracking.opened_at || !product.value?.product_category) return;
+  const months = PAO_MONTHS[product.value.product_category] ?? 12;
+  const d = new Date(tracking.opened_at);
+  d.setMonth(d.getMonth() + months);
+  tracking.expires_at = d.toISOString().slice(0, 10);
+};
 
 // 計算預計用完日
 const estimatedFinishDate = computed(() => {
@@ -193,7 +221,10 @@ const fetchProduct = async () => {
       }
       // 初始化追蹤欄位
       tracking.opened_at = response.data.opened_at
-        ? response.data.opened_at.slice(0, 10)
+        ? String(response.data.opened_at).slice(0, 10)
+        : ''
+      tracking.expires_at = response.data.expires_at
+        ? String(response.data.expires_at).slice(0, 10)
         : ''
       tracking.estimated_finish_days = response.data.estimated_finish_days ?? null
       tracking.purchase_purpose = response.data.purchase_purpose ?? ''
@@ -274,6 +305,7 @@ const saveTracking = async () => {
       method: 'PUT',
       body: {
         opened_at: tracking.opened_at || null,
+        expires_at: tracking.expires_at || null,
         estimated_finish_days: tracking.estimated_finish_days,
         purchase_purpose: tracking.purchase_purpose || null,
         user_notes: tracking.user_notes || null

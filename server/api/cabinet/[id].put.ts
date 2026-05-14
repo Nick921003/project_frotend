@@ -28,6 +28,7 @@ export default defineEventHandler(async (event) => {
     product_name,
     product_category,
     opened_at,
+    expires_at,
     estimated_finish_days,
     purchase_purpose,
     user_notes
@@ -35,8 +36,8 @@ export default defineEventHandler(async (event) => {
 
   // 至少需要一個欄位
   const hasBasicFields = product_name || product_category;
-  const hasTrackingFields = opened_at !== undefined || estimated_finish_days !== undefined ||
-    purchase_purpose !== undefined || user_notes !== undefined;
+  const hasTrackingFields = opened_at !== undefined || expires_at !== undefined ||
+    estimated_finish_days !== undefined || purchase_purpose !== undefined || user_notes !== undefined;
 
   if (!hasBasicFields && !hasTrackingFields) {
     throw createError({ statusCode: 400, statusMessage: '請提供至少一個要更新的欄位' });
@@ -47,6 +48,7 @@ export default defineEventHandler(async (event) => {
   if (product_name) updateData.product_name = product_name;
   if (product_category) updateData.product_category = normalizeProductCategory(product_category);
   if (opened_at !== undefined) updateData.opened_at = opened_at;
+  if (expires_at !== undefined) updateData.expires_at = expires_at || null;
   if (estimated_finish_days !== undefined) updateData.estimated_finish_days = estimated_finish_days;
   if (purchase_purpose !== undefined) updateData.purchase_purpose = purchase_purpose;
   if (user_notes !== undefined) updateData.user_notes = user_notes;

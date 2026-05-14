@@ -1,5 +1,13 @@
 import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server';
 
+function getExpiryStatus(expiresAt: string | null | undefined): 'expired' | 'soon' | 'ok' | null {
+  if (!expiresAt) return null;
+  const diffDays = Math.floor((new Date(expiresAt).getTime() - Date.now()) / 86400000);
+  if (diffDays < 0) return 'expired';
+  if (diffDays <= 30) return 'soon';
+  return 'ok';
+}
+
 export default defineEventHandler(async (event) => {
   // 1. 驗證使用者登入狀態
   const user = await serverSupabaseUser(event);
@@ -76,7 +84,8 @@ export default defineEventHandler(async (event) => {
 
   const enrichedData = (data || []).map((p: any) => ({
     ...p,
-    routine_usage_count: usageMap.get(p.id) || 0
+    routine_usage_count: usageMap.get(p.id) || 0,
+    expiry_status: getExpiryStatus(p.expires_at)
   }));
 
   return {

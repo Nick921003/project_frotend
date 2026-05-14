@@ -66,6 +66,14 @@
                 v-if="(product as any).routine_usage_count > 0"
                 class="routine-usage-badge"
               >排程中 ×{{ (product as any).routine_usage_count }}</span>
+              <span
+                v-if="(product as any).expiry_status === 'expired'"
+                class="expiry-badge expiry-badge--expired"
+              >已過期</span>
+              <span
+                v-else-if="(product as any).expiry_status === 'soon'"
+                class="expiry-badge expiry-badge--soon"
+              >快到期</span>
             </td>
             <td class="product-category">{{ product.product_category }}</td>
             <td>
@@ -480,6 +488,25 @@ const goNextCabinetPage = async () => {
 	margin-left: 6px;
 	vertical-align: middle;
 	white-space: nowrap;
+}
+
+.expiry-badge {
+	font-size: 11px;
+	border-radius: var(--radius-sm);
+	padding: 1px 6px;
+	margin-left: 6px;
+	vertical-align: middle;
+	white-space: nowrap;
+}
+
+.expiry-badge--expired {
+	color: var(--color-red);
+	border: 1px solid var(--color-red);
+}
+
+.expiry-badge--soon {
+	color: var(--color-amber);
+	border: 1px solid var(--color-amber);
 }
 
 .product-date {

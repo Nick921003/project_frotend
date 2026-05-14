@@ -95,6 +95,13 @@
               </div>
               <div class="item-actions">
                 <button
+                  v-if="item.id"
+                  @click.stop="$emit('toggle-checkin', item.id)"
+                  class="btn-checkin"
+                  :class="{ 'is-checked': checkedItemIds.has(item.id) }"
+                  title="今日打卡"
+                >{{ checkedItemIds.has(item.id) ? '✅' : '⬜' }}</button>
+                <button
                   @click="$emit('toggle-item-lock', item)"
                   class="btn-lock"
                   :title="item.is_locked ? '解鎖' : '鎖定'"
@@ -171,6 +178,13 @@
               </div>
               <div class="item-actions">
                 <button
+                  v-if="item.id"
+                  @click.stop="$emit('toggle-checkin', item.id)"
+                  class="btn-checkin"
+                  :class="{ 'is-checked': checkedItemIds.has(item.id) }"
+                  title="今日打卡"
+                >{{ checkedItemIds.has(item.id) ? '✅' : '⬜' }}</button>
+                <button
                   @click="$emit('toggle-item-lock', item)"
                   class="btn-lock"
                   :title="item.is_locked ? '解鎖' : '鎖定'"
@@ -220,6 +234,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import type { PropType } from 'vue';
 import type { WeeklyRoutine, RoutineItem } from '~/types/routine';
 import type { ConflictWarning } from '~/utils/ingredientConflicts';
 
@@ -233,15 +248,18 @@ const props = withDefaults(defineProps<{
   onProductDrop: Function;
   productAnalysisMap?: Map<string, any>;
   conflictsByDay?: Record<number, { rule: string; message: string }[]>;
+  checkedItemIds?: Set<string>;
 }>(), {
   productAnalysisMap: () => new Map(),
-  conflictsByDay: () => ({})
+  conflictsByDay: () => ({}),
+  checkedItemIds: () => new Set<string>()
 });
 
 defineEmits<{
   (e: 'update:expandedDayIdx', idx: number): void;
   (e: 'toggle-item-lock', item: RoutineItem): void;
   (e: 'remove-item', dayOfWeek: number, timeOfDay: 'morning' | 'evening', productName: string): void;
+  (e: 'toggle-checkin', itemId: string): void;
 }>();
 
 /** 記錄哪些 item 展開了 notes */
@@ -322,6 +340,7 @@ const getEveningItems = (dayIdx: number) =>
 .btn-notes:hover, .btn-notes.active { background: var(--color-accent-light); border-color: var(--color-accent); color: var(--color-accent); }
 .item-notes { margin-top: 6px; padding: 6px 10px; background: var(--color-surface-alt); border-left: 2px solid var(--color-accent); border-radius: 0 4px 4px 0; font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; }
 
+.btn-checkin { background: none; border: none; cursor: pointer; font-size: 15px; padding: 2px 4px; line-height: 1; }
 .btn-lock { background: none; border: none; cursor: pointer; padding: 2px; font-size: 14px; opacity: 0.7; transition: opacity 0.2s; }
 .btn-lock:hover { opacity: 1; }
 .btn-remove { background: var(--color-red-light); color: var(--color-red); border: none; border-radius: var(--radius-sm); cursor: pointer; padding: 2px 8px; font-weight: 700; font-size: 14px; transition: background 0.2s; }

@@ -50,8 +50,10 @@
           :on-product-drop="onProductDrop"
           :product-analysis-map="productAnalysisMap"
           :conflicts-by-day="routine.conflicts_by_day || {}"
+          :checked-item-ids="checkedItemIds"
           @toggle-item-lock="toggleItemLock"
           @remove-item="removeItem"
+          @toggle-checkin="handleToggleCheckin"
         />
       </div>
 
@@ -230,6 +232,42 @@ const resetSchedule = async () => {
 };
 
 // ==================
+// 每日打卡
+// ==================
+const today = new Date().toISOString().slice(0, 10);
+const checkedItemIds = ref(new Set<string>());
+
+const loadCheckins = async () => {
+  if (!routineId) return;
+  try {
+    const res = await $fetch<{ success: boolean; data: { checked_ids: string[] } }>(
+      `/api/routines/${routineId}/checkins`,
+      { query: { date: today } }
+    );
+    checkedItemIds.value = new Set(res.data?.checked_ids ?? []);
+  } catch {
+    // 非致命，打卡狀態載入失敗不阻斷頁面
+  }
+};
+
+const handleToggleCheckin = async (itemId: string) => {
+  try {
+    const res = await $fetch<{ success: boolean; checked: boolean }>(
+      '/api/routines/checkins/toggle',
+      { method: 'POST', body: { routine_item_id: itemId, checked_date: today } }
+    );
+    if (res.checked) {
+      checkedItemIds.value.add(itemId);
+    } else {
+      checkedItemIds.value.delete(itemId);
+    }
+    checkedItemIds.value = new Set(checkedItemIds.value); // 觸發 Vue reactivity
+  } catch {
+    // 打卡操作失敗不阻斷頁面
+  }
+};
+
+// ==================
 // 導覽方法
 // ==================
 const goToAIRecs = () => router.push({ path: '/routines/new', query: { action: 'recs', routineId } });
@@ -251,6 +289,7 @@ onMounted(async () => {
     sessionStorage.removeItem(`efficacyRecs_${routineId}`)
   }
 
+  await loadCheckins();
   pageLoading.value = false;
 });
 </script>

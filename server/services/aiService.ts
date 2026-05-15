@@ -87,12 +87,12 @@ export class AIService {
         },
       });
 
-      const imageParts = images.map(b64 => ({
-        inlineData: {
-          data: b64,
-          mimeType: "image/jpeg" as const,
-        },
-      }));
+      const imageParts = images.map(b64 => {
+        const match = b64.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/)
+        const mimeType = (match?.[1] || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/heif' | 'image/heic'
+        const data = match ? b64.replace(/^data:image\/[^;]+;base64,/, '') : b64
+        return { inlineData: { data, mimeType } }
+      });
 
       const prompt = images.length > 1
         ? "這些照片是同一個產品的不同角度（正面標籤、成分表、宣傳說明等）。請辨識產品名稱，並萃取所有照片中出現的成分，合併去重後，依照指示回傳 JSON。"

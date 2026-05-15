@@ -46,6 +46,12 @@
 
       <p v-if="errorMsg" class="login-error">{{ errorMsg }}</p>
 
+      <div class="login-divider"><span>或</span></div>
+
+      <button class="btn btn-secondary btn-lg login-btn" :disabled="isLoading" @click="handleGoogleLogin">
+        用 Google 帳號登入
+      </button>
+
       <p v-if="isLoginMode && registrationEnabled" class="login-toggle" @click="isLoginMode = false">
         沒有帳號？點此註冊
       </p>
@@ -79,6 +85,21 @@ onMounted(async () => {
     registrationEnabled.value = true
   }
 })
+
+const handleGoogleLogin = async () => {
+  isLoading.value = true
+  errorMsg.value = ''
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/` }
+    })
+    if (error) throw error
+  } catch (error) {
+    errorMsg.value = error.message
+    isLoading.value = false
+  }
+}
 
 const handleAuth = async () => {
   if (!email.value || !password.value) {
@@ -171,5 +192,21 @@ const handleAuth = async () => {
   font-size: 13px;
   color: #999;
   margin-bottom: 0;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
 }
 </style>

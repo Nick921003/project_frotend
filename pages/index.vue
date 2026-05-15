@@ -60,6 +60,14 @@
                 @change="handleImageUpload"
               />
             </label>
+            <button
+              class="btn btn-secondary btn-sm"
+              :disabled="isLoading"
+              type="button"
+              @click="handleDrivePick"
+            >
+              從 Google Drive 選取
+            </button>
             <span v-if="imageBase64Array.length > 0" class="hint-text">
               已選擇 {{ imageBase64Array.length }} 張
             </span>
@@ -67,9 +75,19 @@
 
           <div v-if="imageBase64Array.length > 0" class="preview-grid">
             <div v-for="(src, idx) in imageBase64Array" :key="idx" class="preview-item">
-              <img :src="src" alt="預覽" class="preview-img" />
+              <div
+                v-if="src.startsWith('data:image/heic') || src.startsWith('data:image/heif')"
+                class="preview-heic"
+              >HEIC</div>
+              <img v-else :src="src" alt="預覽" class="preview-img" @click="previewSrc = src" />
               <button class="preview-remove" :disabled="isLoading" @click="removeImage(idx)">×</button>
             </div>
+          </div>
+
+          <!-- 圖片放大 lightbox -->
+          <div v-if="previewSrc" class="lightbox" @click="previewSrc = null">
+            <img :src="previewSrc" class="lightbox-img" @click.stop />
+            <button class="lightbox-close" @click="previewSrc = null">×</button>
           </div>
 
           <p v-if="fromRoutine" class="hint-text hint-text--accent">
@@ -184,7 +202,8 @@ const suppressWarnings = computed(() => userProfileStore.profile?.suppress_safet
 
 // 若登入後 store 尚未載入 profile，則自動拉取（避免首次進入分析頁時警告仍顯示）
 watchEffect(() => {
-  if (user.value && !userProfileStore.profile && !userProfileStore.loading) {
+  // 只在 client 端執行：SSR 時 $fetch 不帶 cookie，fetchUserProfile 會回 401
+  if (import.meta.client && user.value && !userProfileStore.profile && !userProfileStore.loading) {
     userProfileStore.fetchUserProfile()
   }
 })
@@ -225,22 +244,60 @@ watchEffect(async () => {
   }
 })
 
-const handleImageUpload = (event) => {
+// 壓縮圖片：長邊縮到 2048px，JPEG quality 0.85，保留 OCR 清晰度
+const compressImage = (file) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const MAX = 2048
+      let width = img.naturalWidth
+      let height = img.naturalHeight
+      if (width > MAX || height > MAX) {
+        if (width >= height) { height = Math.round(height * MAX / width); width = MAX }
+        else { width = Math.round(width * MAX / height); height = MAX }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+      URL.revokeObjectURL(url)
+      resolve(canvas.toDataURL('image/jpeg', 0.85))
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('圖片載入失敗')) }
+    img.src = url
+  })
+}
+
+const handleImageUpload = async (event) => {
   errorMsg.value = null
   const files = event.target.files
   if (!files || files.length === 0) return
 
   for (const file of files) {
-    if (file.size > 5 * 1024 * 1024) {
-      errorMsg.value = `「${file.name}」過大，請上傳小於 5MB 的照片。`
+    if (file.size > 20 * 1024 * 1024) {
+      errorMsg.value = `「${file.name}」過大，請上傳小於 20MB 的照片。`
       continue
     }
-    const reader = new FileReader()
-    reader.onload = (e) => { imageBase64Array.value.push(e.target.result) }
-    reader.onerror = () => { errorMsg.value = '圖片讀取失敗，請重試。' }
-    reader.readAsDataURL(file)
+    try {
+      const compressed = await compressImage(file)
+      imageBase64Array.value.push(compressed)
+    } catch {
+      errorMsg.value = '圖片讀取失敗，請重試。'
+    }
   }
   event.target.value = ''
+}
+
+const previewSrc = ref(null)
+
+const { openPicker } = useGoogleDrivePicker()
+
+const handleDrivePick = () => {
+  openPicker(
+    (base64) => { imageBase64Array.value.push(base64) },
+    (msg) => { errorMsg.value = msg }
+  )
 }
 
 const removeImage = (idx) => {
@@ -474,6 +531,53 @@ onMounted(() => {
   border-radius: var(--radius-md);
   display: block;
   border: 1px solid var(--color-border-light);
+  cursor: zoom-in;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.lightbox-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: var(--radius-md);
+  object-fit: contain;
+}
+
+.lightbox-close {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.preview-heic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
 }
 
 .preview-remove {

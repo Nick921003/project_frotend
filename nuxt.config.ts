@@ -22,6 +22,7 @@ export default defineNuxtConfig({
     redirect: false,  // 禁用自動重導，由我們手動控制
   },
 
+
   vite: {
     optimizeDeps: {
       include: ['cookie'],
@@ -38,6 +39,8 @@ export default defineNuxtConfig({
       // 前端可以存取的公開設定
       supabaseUrl: process.env.SUPABASE_URL || '',
       supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
+      googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+      googleApiKey: process.env.GOOGLE_API_KEY || '',
     }
   }
 })

@@ -1,6 +1,6 @@
 # Beauty Analyzer — 專案現況文件
 
-**最後更新**：2026-05-14
+**最後更新**：2026-05-16
 **技術棧**：Nuxt 4 + Vue 3 + Supabase + Google Gemini 2.5 Flash
 
 > **維護規則**：有功能新增、頁面異動、API 變更、DB migration 時，**必須同步更新此檔**。
@@ -20,7 +20,8 @@
 | 今日保養打卡 | ✅ | `/routines/active` 逐項打卡，每日切換 |
 | AI 功效推薦 | ✅ | 分析現有庫存功效缺口，給出補充建議 |
 | 個人資料 | ✅ | 膚質、年齡、性別、肌膚問題、suppress_safety_warnings |
-| 用戶認證 | ✅ | Supabase Auth，Email/密碼，per-endpoint 401 |
+| 用戶認證 | ✅ | Supabase Auth，Email/密碼 + Google OAuth，per-endpoint 401 |
+| Google Drive 上傳 | ✅ | Picker 多選圖片（含 HEIC），server 端轉 JPEG 預覽 |
 | 管理後台 | ✅ | `/admin`：統計、系統設定 |
 
 ---
@@ -74,6 +75,7 @@
 | Method | 路徑 | 功能 |
 |--------|------|------|
 | POST | `/api/analyze` | 成分分析（支援訪客） |
+| POST | `/api/convert-heic` | HEIC → JPEG 轉換（heic-convert WASM，不需登入） |
 | GET | `/api/profile/get` | 取得個人資料 |
 | POST | `/api/profile/update` | 更新個人資料 |
 | GET | `/api/auth/registration-status` | 檢查是否開放註冊 |
@@ -104,6 +106,7 @@
 | `composables/useCreateRoutine.ts` | AI / 手動建立規劃，180 s timeout 處理 |
 | `composables/useRoutineDragDrop.ts` | 拖拽排程邏輯 |
 | `composables/useRoutineRecommendations.ts` | AI 功效推薦流程 |
+| `composables/useGoogleDrivePicker.ts` | Google Drive Picker，含 HEIC 伺服器端轉換 |
 | `stores/useUserProfile.ts` | Pinia：全站共用使用者資料 |
 
 ---

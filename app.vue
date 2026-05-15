@@ -3,7 +3,7 @@
   <div>
     <nav class="nav">
       <div class="nav-inner">
-        <NuxtLink to="/" class="nav-brand">分析與推薦</NuxtLink>
+        <NuxtLink to="/" class="nav-brand">A.R.C.</NuxtLink>
 
         <div class="nav-right">
           <NuxtLink
@@ -101,8 +101,8 @@ onUnmounted(() => document.removeEventListener('click', closeMenu))
 .nav-inner {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 var(--space-5);
-  height: 52px;
+  padding: 0 var(--space-6);
+  height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -110,11 +110,11 @@ onUnmounted(() => document.removeEventListener('click', closeMenu))
 
 .nav-brand {
   font-family: var(--font-heading);
-  font-size: 17px;
+  font-size: 21px;
   font-weight: 600;
   color: var(--color-text-primary);
   text-decoration: none;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
 }
 
 .nav-brand:hover {

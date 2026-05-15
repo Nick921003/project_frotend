@@ -1,22 +1,12 @@
 <template>
-  <div class="page-container">
+  <div class="page-container--wide">
     <div class="analyze-layout">
       <!-- 左欄：操作區（固定不滾動） -->
       <div class="analyze-left">
 
-        <!-- 頂部狀態列 -->
-        <div class="status-bar">
-          <span v-if="user" class="status-bar__text">
-            會員模式 · 膚質：<strong>{{ selectedSkinType }}</strong>
-          </span>
-          <span v-else class="status-bar__text">訪客</span>
-
-          <button v-if="!user" class="btn btn-sm btn-ghost" @click="navigateTo('/login')">
-            前往登入
-          </button>
+        <div v-if="!user" class="heading-row">
+          <button class="btn btn-sm btn-ghost" @click="navigateTo('/login')">前往登入</button>
         </div>
-
-        <h2 class="page-heading">保養品成分分析</h2>
 
         <!-- 步驟 1：膚質 -->
         <div class="card step-card">
@@ -52,7 +42,8 @@
 
           <div class="upload-row">
             <label class="btn btn-secondary btn-sm upload-label" :class="{ 'disabled': isLoading }">
-              📷 選擇照片（可多選）
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              選擇照片（可多選）
               <input
                 type="file"
                 accept="image/jpeg, image/png, image/webp"
@@ -142,11 +133,11 @@
             </button>
           </div>
 
+          <h3 class="section-title">分析報告</h3>
           <div v-if="result.data.detectedProductName" class="detected-product-name">
             <span class="detected-label">辨識產品</span>
             <strong>{{ result.data.detectedProductName }}</strong>
           </div>
-          <h3 class="section-title">分析報告</h3>
 
           <div
             v-if="result.data.analysis.regulatoryAlerts.length > 0"
@@ -433,7 +424,7 @@ onMounted(() => {
 /* 雙欄佈局 */
 .analyze-layout {
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: 460px 1fr;
   gap: var(--space-6);
   align-items: start;
 }
@@ -444,14 +435,16 @@ onMounted(() => {
 }
 
 .analyze-right {
-  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  min-height: 500px;
 }
 
 .result-placeholder {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 300px;
   border: 1px dashed var(--color-warm-dark);
   border-radius: var(--radius-lg);
   color: var(--color-text-secondary);
@@ -461,35 +454,22 @@ onMounted(() => {
 }
 
 /* 手機版退回單欄 */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .analyze-layout {
     grid-template-columns: 1fr;
   }
   .analyze-left {
     position: static;
   }
+  .upload-row {
+    flex-wrap: wrap;
+  }
 }
 
-.status-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-surface-alt);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--space-5);
-  font-size: 14px;
+.heading-row {
+  margin-bottom: var(--space-4);
 }
 
-.status-bar__text {
-  color: var(--color-text-secondary);
-}
-
-.page-heading {
-  font-size: 24px;
-  margin-bottom: var(--space-5);
-}
 
 .step-card {
   margin-bottom: var(--space-4);
@@ -530,11 +510,20 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .upload-label {
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  flex: 1;
+  justify-content: center;
+}
+
+.upload-row .btn {
+  flex: 1;
+  justify-content: center;
 }
 
 .upload-label.disabled {

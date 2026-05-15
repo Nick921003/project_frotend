@@ -207,10 +207,11 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useUserProfile, SKIN_CONCERNS_OPTIONS, DAILY_HABITS_OPTIONS } from '~/stores/useUserProfile'
 
 const store = useUserProfile()
-const { profile, loading, saveSuccess } = store
+const { profile, loading, saveSuccess } = storeToRefs(store)
 const storeError = computed(() => store.error)
 
 const MAX_CONCERNS = 4

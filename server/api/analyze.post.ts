@@ -6,7 +6,7 @@ import { getAIService } from '~/server/services/aiService';
 const GUEST_DAILY_LIMIT = 3;
 
 // 定義有效的膚質類型
-const VALID_SKIN_TYPES = ['oily', 'dry', 'combination', 'sensitive', 'normal'];
+const VALID_SKIN_TYPES = ['oily', 'dry', 'combination', 'combination_oily', 'combination_dry', 'sensitive', 'normal'];
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event);

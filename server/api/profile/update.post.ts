@@ -18,14 +18,17 @@ export default defineEventHandler(async (event) => {
   const body = (await readBody(event)) || {};
 
   // 同時接受舊版 camelCase 與新版 snake_case 欄位
-  const skinType = body.base_skin_type ?? body.skinType;
-  const ageGroup = body.age_group ?? body.ageGroup;
-  const gender = body.gender;
-  const issues = body.issues;
-  const birthYear = body.birth_year ?? body.birthYear;
-  const suppressSafetyWarnings = body.suppress_safety_warnings;
+  const skinType              = body.base_skin_type ?? body.skinType;
+  const ageGroup              = body.age_group ?? body.ageGroup;
+  const gender                = body.gender;
+  const issues                = body.issues;
+  const dailyHabits           = body.daily_habits;
+  const customSkinConcerns    = body.custom_skin_concerns;
+  const customDailyHabits     = body.custom_daily_habits;
+  const birthYear             = body.birth_year ?? body.birthYear;
+  const suppressSafetyWarnings= body.suppress_safety_warnings;
 
-  const hasAnyField = [skinType, ageGroup, gender, issues, birthYear, suppressSafetyWarnings].some(v => v !== undefined);
+  const hasAnyField = [skinType, ageGroup, gender, issues, dailyHabits, customSkinConcerns, customDailyHabits, birthYear, suppressSafetyWarnings].some(v => v !== undefined);
   if (!hasAnyField) {
     throw createError({ statusCode: 400, statusMessage: '至少需要提供一個欄位進行更新' });
   }
@@ -74,6 +77,15 @@ export default defineEventHandler(async (event) => {
   if (issues !== undefined) {
     updateData.issues = issues || null;
   }
+  if (dailyHabits !== undefined) {
+    updateData.daily_habits = dailyHabits || null;
+  }
+  if (customSkinConcerns !== undefined) {
+    updateData.custom_skin_concerns = customSkinConcerns || null;
+  }
+  if (customDailyHabits !== undefined) {
+    updateData.custom_daily_habits = customDailyHabits || null;
+  }
   if (suppressSafetyWarnings !== undefined) {
     updateData.suppress_safety_warnings = Boolean(suppressSafetyWarnings);
   }
@@ -120,6 +132,15 @@ export default defineEventHandler(async (event) => {
     }
     if (issues !== undefined) {
       insertData.issues = issues || null;
+    }
+    if (dailyHabits !== undefined) {
+      insertData.daily_habits = dailyHabits || null;
+    }
+    if (customSkinConcerns !== undefined) {
+      insertData.custom_skin_concerns = customSkinConcerns || null;
+    }
+    if (customDailyHabits !== undefined) {
+      insertData.custom_daily_habits = customDailyHabits || null;
     }
     if (suppressSafetyWarnings !== undefined) {
       insertData.suppress_safety_warnings = Boolean(suppressSafetyWarnings);

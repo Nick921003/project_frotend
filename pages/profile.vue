@@ -2,22 +2,11 @@
   <div class="page-container">
     <h1 class="page-heading">個人資料中心</h1>
 
-    <div class="card">
-      <h2 class="section-title" style="font-size: 16px; margin-bottom: var(--space-5);">基本資料設定</h2>
+    <!-- 基本資料卡片 -->
+    <div class="card mb-4">
+      <h2 class="section-title" style="font-size: 16px; margin-bottom: var(--space-5);">基本資料</h2>
 
       <form @submit.prevent="handleSubmit">
-        <div class="form-group">
-          <label class="form-label" for="skinType">膚質類型</label>
-          <select id="skinType" v-model="formData.skinType" class="form-input">
-            <option value="">未選擇</option>
-            <option value="dry">乾性</option>
-            <option value="oily">油性</option>
-            <option value="combination">混合性</option>
-            <option value="sensitive">敏感性</option>
-            <option value="normal">中性</option>
-          </select>
-        </div>
-
         <div class="form-group">
           <label class="form-label" for="ageGroup">年齡群組</label>
           <select id="ageGroup" v-model="formData.ageGroup" class="form-input">
@@ -41,18 +30,6 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="issues">肌膚問題或過敏成分</label>
-          <p class="hint-text">可填入肌膚問題（如：痘痘、粉刺、敏感）或對哪些成分過敏（如：酒精、香料）</p>
-          <textarea
-            id="issues"
-            v-model="formData.issues"
-            class="form-input"
-            style="height: 100px; resize: vertical;"
-            placeholder="例如：容易長痘、對酒精敏感、害怕重金屬..."
-          ></textarea>
-        </div>
-
-        <div class="form-group">
           <label class="form-label">進階使用者模式</label>
           <p class="hint-text">開啟後，分析頁的「膚質地雷」提示將隱藏。法規禁用成分警告不受影響。</p>
           <label class="toggle-switch">
@@ -65,81 +42,133 @@
         </div>
 
         <div class="form-footer">
-          <button type="submit" class="btn btn-primary">儲存修改</button>
+          <button type="submit" class="btn btn-primary" :disabled="saving">
+            {{ saving ? '儲存中...' : '儲存修改' }}
+          </button>
           <span v-if="successMessage" class="feedback feedback--success">✅ {{ successMessage }}</span>
-          <span v-if="errorMessage" class="feedback feedback--error">❌ {{ errorMessage }}</span>
+          <span v-if="errorMessage"   class="feedback feedback--error">❌ {{ errorMessage }}</span>
         </div>
       </form>
     </div>
+
+    <!-- 膚況摘要卡片 -->
+    <div class="card mb-4">
+      <div class="skin-summary-header">
+        <h2 class="section-title" style="font-size: 16px; margin: 0;">膚況設定</h2>
+        <button class="btn btn-sm btn-ghost" @click="navigateTo('/profile-setup?from=profile')">重新設定</button>
+      </div>
+
+      <!-- 膚質 -->
+      <div class="summary-row">
+        <span class="summary-label">基礎膚質</span>
+        <span v-if="profile?.base_skin_type" class="skin-type-badge">
+          {{ SKIN_TYPE_LABEL[profile.base_skin_type] ?? profile.base_skin_type }}
+        </span>
+        <span v-else class="text-text-secondary text-sm">尚未設定</span>
+      </div>
+
+      <!-- 肌膚困擾 -->
+      <div class="summary-row">
+        <span class="summary-label">肌膚困擾</span>
+        <div class="flex flex-wrap gap-1.5">
+          <span v-for="c in skinConcernsArray" :key="c" class="concern-tag">
+            {{ CONCERN_LABEL[c] ?? c }}
+          </span>
+          <span v-for="c in customSkinConcernsArray" :key="'custom-' + c" class="concern-tag concern-tag--custom">
+            {{ c }}
+          </span>
+          <span v-if="skinConcernsArray.length === 0 && customSkinConcernsArray.length === 0" class="text-text-secondary text-sm">尚未設定</span>
+        </div>
+      </div>
+
+      <!-- 日常習慣 -->
+      <div class="summary-row" style="border-bottom: none;">
+        <span class="summary-label">日常習慣</span>
+        <div class="flex flex-wrap gap-1.5">
+          <span v-for="h in dailyHabitsArray" :key="h" class="habit-tag">
+            {{ HABIT_LABEL[h] ?? h }}
+          </span>
+          <span v-for="h in customDailyHabitsArray" :key="'custom-' + h" class="habit-tag habit-tag--custom">
+            {{ h }}
+          </span>
+          <span v-if="dailyHabitsArray.length === 0 && customDailyHabitsArray.length === 0" class="text-text-secondary text-sm">尚未設定</span>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useUserProfile } from '~/stores/useUserProfile'
+import { storeToRefs } from 'pinia'
+import { useUserProfile, SKIN_CONCERNS_OPTIONS, DAILY_HABITS_OPTIONS } from '~/stores/useUserProfile'
 
 type Gender = 'male' | 'female' | 'other' | '';
 
 const userProfileStore = useUserProfile()
+const { profile, skinConcernsArray, customSkinConcernsArray, dailyHabitsArray, customDailyHabitsArray } = storeToRefs(userProfileStore)
+
+// 顯示用 label map
+const SKIN_TYPE_LABEL: Record<string, string> = {
+  oily:             '油性肌',
+  dry:              '乾性肌',
+  combination_oily: '混合偏油',
+  combination_dry:  '混合偏乾',
+  sensitive:        '敏感肌',
+  combination:      '混合性肌膚',
+  normal:           '中性肌膚',
+}
+
+const CONCERN_LABEL = Object.fromEntries(SKIN_CONCERNS_OPTIONS.map(o => [o.value, o.label]))
+const HABIT_LABEL   = Object.fromEntries(DAILY_HABITS_OPTIONS.map(o => [o.value, o.label]))
 
 const formData = ref({
-  skinType: '',
-  ageGroup: '',
-  gender: '' as Gender,
-  issues: '',
-  suppressSafetyWarnings: false
+  ageGroup:               '',
+  gender:                 '' as Gender,
+  suppressSafetyWarnings: false,
 })
 
+const saving         = ref(false)
 const successMessage = ref('')
-const errorMessage = ref('')
+const errorMessage   = ref('')
 
 const fillFormFromStore = () => {
-  const profile = userProfileStore.profile
-  if (!profile) return
+  const p = profile.value
+  if (!p) return
   formData.value = {
-    skinType: profile.base_skin_type || '',
-    ageGroup: profile.age_group || '',
-    gender: (profile.gender || '') as Gender,
-    issues: profile.issues || '',
-    suppressSafetyWarnings: profile.suppress_safety_warnings ?? false
+    ageGroup:               p.age_group || '',
+    gender:                 (p.gender || '') as Gender,
+    suppressSafetyWarnings: p.suppress_safety_warnings ?? false,
   }
 }
 
 const handleSubmit = async () => {
-  if (!formData.value.skinType) {
-    errorMessage.value = '請選擇膚質類型'
-    return
-  }
-
+  saving.value       = true
+  errorMessage.value = ''
   try {
     await userProfileStore.updateUserProfile({
-      base_skin_type: formData.value.skinType,
-      age_group: formData.value.ageGroup || null,
-      gender: (formData.value.gender || null) as 'male' | 'female' | 'other' | null,
-      issues: formData.value.issues || null,
-      suppress_safety_warnings: formData.value.suppressSafetyWarnings
+      age_group:                formData.value.ageGroup  || null,
+      gender:                   (formData.value.gender   || null) as 'male' | 'female' | 'other' | null,
+      suppress_safety_warnings: formData.value.suppressSafetyWarnings,
     })
 
     if (userProfileStore.error) throw new Error(userProfileStore.error)
 
     await userProfileStore.fetchUserProfile()
     fillFormFromStore()
-
     successMessage.value = '資料已成功保存！'
-    errorMessage.value = ''
     setTimeout(() => { successMessage.value = '' }, 3000)
   } catch (error: any) {
     errorMessage.value = error.data?.statusMessage || error.message || '保存失敗，請重試'
+  } finally {
+    saving.value = false
   }
 }
 
 onMounted(async () => {
-  try {
-    await userProfileStore.fetchUserProfile()
-    fillFormFromStore()
-  } catch (err) {
-    console.error('載入個人資料失敗:', err)
-  }
+  if (!profile.value) await userProfileStore.fetchUserProfile()
+  fillFormFromStore()
 })
 </script>
 
@@ -167,9 +196,8 @@ onMounted(async () => {
   font-size: 14px;
   font-weight: 500;
 }
-
 .feedback--success { color: var(--color-sage); }
-.feedback--error   { color: var(--color-red); }
+.feedback--error   { color: var(--color-red);  }
 
 .toggle-switch { display: flex; align-items: center; gap: var(--space-2); cursor: pointer; }
 .toggle-switch input { display: none; }
@@ -191,4 +219,68 @@ onMounted(async () => {
 }
 .toggle-switch input:checked ~ .toggle-track .toggle-thumb { left: 21px; }
 .toggle-label { font-size: 13px; color: var(--color-text-secondary); }
+
+/* ── Skin summary ── */
+.skin-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.summary-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.summary-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  min-width: 72px;
+  padding-top: 2px;
+  flex-shrink: 0;
+}
+
+.skin-type-badge {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.concern-tag,
+.habit-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.concern-tag {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  border: 1px solid var(--color-warm-dark);
+}
+
+.habit-tag {
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-light);
+}
+
+.concern-tag--custom {
+  background: var(--color-surface-alt);
+  color: var(--color-accent);
+  border: 1px dashed var(--color-accent);
+}
+
+.habit-tag--custom {
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  border: 1px dashed var(--color-border);
+}
 </style>

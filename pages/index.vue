@@ -22,11 +22,13 @@
         <div class="card step-card">
           <label class="form-label step-label">步驟 1 · 確認膚質</label>
           <select v-model="selectedSkinType" :disabled="!!user" class="form-input">
-            <option value="oily">油性肌膚 — 容易出油、長痘</option>
-            <option value="dry">乾性肌膚 — 容易緊繃、脫屑</option>
-            <option value="combination">混合性肌膚 — T字油、兩頰乾</option>
-            <option value="sensitive">敏感性肌膚 — 容易泛紅、刺痛</option>
-            <option value="normal">中性肌膚 — 油水分泌平衡</option>
+            <option value="oily">油性肌 — 容易出油、長痘</option>
+            <option value="dry">乾性肌 — 容易緊繃、脫屑</option>
+            <option value="combination_oily">混合偏油 — T字出油、兩頰中性</option>
+            <option value="combination_dry">混合偏乾 — T字中性、兩頰偏乾</option>
+            <option value="sensitive">敏感肌 — 容易泛紅、刺痛</option>
+            <option value="combination">混合性肌膚（舊版）</option>
+            <option value="normal">中性肌膚（舊版）</option>
           </select>
           <p v-if="user" class="hint-text">已自動套用您的會員膚質設定</p>
         </div>
@@ -126,6 +128,20 @@
         </div>
 
         <div v-else class="results-section">
+          <!-- 膚況未設定時的引導卡片 -->
+          <div v-if="showProfileSetupPrompt" class="profile-prompt-card">
+            <div class="profile-prompt-card__text">
+              <strong>讓這次分析更精準</strong>
+              <p>設定你的膚質與肌膚困擾，AI 下次能提供更個人化的成分建議</p>
+            </div>
+            <button
+              class="btn btn-sm btn-secondary"
+              @click="navigateTo('/profile-setup')"
+            >
+              前往設定
+            </button>
+          </div>
+
           <div v-if="result.data.detectedProductName" class="detected-product-name">
             <span class="detected-label">辨識產品</span>
             <strong>{{ result.data.detectedProductName }}</strong>
@@ -203,6 +219,14 @@ const user = useSupabaseUser()
 // 進階模式：從 store 讀取，控制是否隱藏膚質地雷警告
 const userProfileStore = useUserProfile()
 const suppressWarnings = computed(() => userProfileStore.profile?.suppress_safety_warnings === true)
+
+// 分析完成後，若登入用戶尚未設定膚況，提示前往設定
+const showProfileSetupPrompt = computed(() =>
+  !!user.value &&
+  analysisReady.value &&
+  !userProfileStore.loading &&
+  (!userProfileStore.profile || !userProfileStore.skinConcernsArray.length)
+)
 
 // 若登入後 store 尚未載入 profile，則自動拉取（避免首次進入分析頁時警告仍顯示）
 watchEffect(() => {
@@ -621,6 +645,31 @@ onMounted(() => {
 
 .results-section {
   margin-top: var(--space-8);
+}
+
+.profile-prompt-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-accent-light);
+  border: 1px solid var(--color-warm-dark);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+
+.profile-prompt-card__text strong {
+  font-size: 14px;
+  color: var(--color-accent);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.profile-prompt-card__text p {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 0;
 }
 
 .detected-product-name {

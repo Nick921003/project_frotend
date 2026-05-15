@@ -4,6 +4,7 @@ import { ref } from 'vue';
 // token 存在記憶體，關頁面消失；重新選取才會再授權
 export function useGoogleDrivePicker() {
 	const config = useRuntimeConfig()
+	const user = useSupabaseUser()
 	const _token = ref<string | null>(null)
 
 	// 動態載入 gapi + Google Identity Services，避免影響頁面啟動速度
@@ -44,6 +45,7 @@ export function useGoogleDrivePicker() {
 			const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
 				client_id: config.public.googleClientId,
 				scope: 'https://www.googleapis.com/auth/drive.readonly',
+				login_hint: user.value?.email || undefined,
 				callback: (res: any) => {
 					if (res.error) { reject(new Error(res.error)); return }
 					_token.value = res.access_token

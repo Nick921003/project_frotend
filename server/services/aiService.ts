@@ -12,7 +12,7 @@
 import type { UserProfileData, CabinetProduct } from '~/types/routine';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-3.1-flash-lite';
 
 /**
  * Gemini 配置

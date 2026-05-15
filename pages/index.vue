@@ -126,6 +126,10 @@
         </div>
 
         <div v-else class="results-section">
+          <div v-if="result.data.detectedProductName" class="detected-product-name">
+            <span class="detected-label">辨識產品</span>
+            <strong>{{ result.data.detectedProductName }}</strong>
+          </div>
           <h3 class="section-title">分析報告</h3>
 
           <div
@@ -617,6 +621,26 @@ onMounted(() => {
 
 .results-section {
   margin-top: var(--space-8);
+}
+
+.detected-product-name {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  font-size: 15px;
+}
+
+.detected-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
 }
 
 .safe-chips {

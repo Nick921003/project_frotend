@@ -1,6 +1,6 @@
 # Beauty Analyzer — 專案現況文件
 
-**最後更新**：2026-05-16
+**最後更新**：2026-05-16（今日打卡頁 UI 重設計）
 **技術棧**：Nuxt 4 + Vue 3 + Supabase + Google Gemini 2.5 Flash
 
 > **維護規則**：有功能新增、頁面異動、API 變更、DB migration 時，**必須同步更新此檔**。
@@ -17,7 +17,7 @@
 | PAO 追蹤 | ✅ | 開封日 + 類別自動推算 expires_at，到期警告 |
 | 每週保養規劃 | ✅ | 建立規劃、拖拽排程、鎖定項目 |
 | AI 規劃生成 | ✅ | Gemini 依膚質 + 庫存生成規劃（180 s timeout） |
-| 今日保養打卡 | ✅ | `/routines/active` 逐項打卡，每日切換 |
+| 今日保養打卡 | ✅ | `/routines/active` 逐項打卡，每日切換；進度卡 + Timeline 步驟 + 完成 banner |
 | AI 功效推薦 | ✅ | 分析現有庫存功效缺口，給出補充建議 |
 | 個人資料 | ✅ | 膚質、年齡、性別、肌膚問題、suppress_safety_warnings |
 | 用戶認證 | ✅ | Supabase Auth，Email/密碼 + Google OAuth，per-endpoint 401 |

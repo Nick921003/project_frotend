@@ -137,6 +137,32 @@ Classes：`.alert-red` / `.alert-orange` / `.alert-yellow` / `.alert-green` / `.
 
 Classes：`.status-loading` / `.status-error` / `.status-success`
 
+### 進度卡（`.progress-card`）
+
+用於「今日完成 X / N 步驟」類的進度概覽。結構固定：
+```
+.progress-card
+  .progress-top  → 左標籤 + 右計數（font-heading, accent色）
+  .progress-bar-bg → .progress-bar-fill（sage→accent 漸層，transition width）
+  .progress-sub  → 11px muted 副文字
+```
+fill 寬度用 `:style="{ width: pct + '%' }"` 動態綁定，`transition: width 0.4s ease`。
+
+### Timeline 步驟（`.tl-section`）
+
+用於有序步驟清單，強調步驟順序與完成狀態。
+
+```
+.tl-section
+  .tl-section-header  → 左色條（morning: amber / evening: sage） + 標題 + 右側計數 pill
+  .tl-list            → position: relative，::before 畫左側連接線（left: 19px）
+    .tl-item[--done]  → 點擊整行打卡，--done 改背景 sage-light + 名稱刪除線
+      .tl-node[--done] → 30px 圓形，未完成顯示序號，完成填 sage + 白勾 ::after
+      .tl-body         → surface-alt 背景，hover 轉 accent-light
+```
+
+連接線定位：`left: 19px`（= 4px padding-left + 15px half-node），`top/bottom: 15px`。
+
 ### 表單
 
 - `label` → `.form-label`（14px, `--color-text-secondary`）

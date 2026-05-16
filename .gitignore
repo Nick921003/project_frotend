@@ -125,3 +125,4 @@ coverage/
 # Git worktrees
 .worktrees/
 .gstack/
+.superpowers/

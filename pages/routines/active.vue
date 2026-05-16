@@ -155,7 +155,7 @@ onMounted(loadCheckins)
 
 			<!-- 內容卡片 -->
 			<div class="content-card">
-			<!-- 星期 tab -->
+			<!-- 星期 tab（今日高亮 + 打卡小點） -->
 			<div class="day-tabs" role="tablist">
 				<button
 					v-for="(label, dow) in DAY_LABELS"
@@ -169,7 +169,15 @@ onMounted(loadCheckins)
 					:aria-selected="dow === selectedDow"
 					@click="selectedDow = dow"
 				>
-					{{ label }}
+					<span class="day-tab-label">{{ label }}</span>
+					<span class="day-dot-row" aria-hidden="true">
+						<span
+							v-for="n in getTabDotCount(dow)"
+							:key="n"
+							class="day-dot"
+							:class="{ 'day-dot--done': dow === todayDow && n <= doneToday }"
+						/>
+					</span>
 				</button>
 			</div>
 
@@ -316,44 +324,84 @@ onMounted(loadCheckins)
 /* ── 星期 tab 列 ── */
 .day-tabs {
 	display: flex;
-	gap: var(--space-2);
+	gap: var(--space-1);
 	margin-bottom: var(--space-5);
 	border-bottom: 1px solid var(--color-border);
 	padding-bottom: var(--space-3);
+	align-items: flex-end;
 }
 
 .day-tab {
 	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
 	padding: var(--space-2) 0;
 	background: transparent;
 	border: 1px solid transparent;
 	border-radius: var(--radius-sm);
-	font-family: var(--font-body);
-	font-size: 14px;
-	color: var(--color-text-secondary);
 	cursor: pointer;
-	transition: background 0.18s, color 0.18s, border-color 0.18s;
+	transition: background 0.18s, border-color 0.18s, box-shadow 0.18s, padding 0.18s;
 }
 
-/* 今天標記（未被選中時加底線提示） */
-.day-tab--today:not(.day-tab--selected) {
-	color: var(--color-accent);
+.day-tab-label {
+	font-family: var(--font-body);
+	font-size: 13px;
+	color: var(--color-text-secondary);
+	font-weight: 400;
+	transition: color 0.18s, font-size 0.18s, font-weight 0.18s;
+}
+
+/* 今日 tab：放大高亮 */
+.day-tab--today {
+	background: var(--color-accent);
 	border-color: var(--color-accent);
+	padding: var(--space-3) 0 var(--space-2);
+	box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
 
-/* 被選中的 tab */
-.day-tab--selected {
+.day-tab--today .day-tab-label {
+	color: var(--color-surface);
+	font-size: 14px;
+	font-weight: 700;
+}
+
+/* 被選中但非今天 */
+.day-tab--selected:not(.day-tab--today) {
 	background: var(--color-surface-alt);
-	color: var(--color-text-primary);
 	border-color: var(--color-border);
+}
+
+.day-tab--selected:not(.day-tab--today) .day-tab-label {
+	color: var(--color-text-primary);
 	font-weight: 600;
 }
 
-/* 今天且被選中 */
-.day-tab--today.day-tab--selected {
-	background: var(--color-accent);
-	color: var(--color-surface);
-	border-color: var(--color-accent);
+/* 打卡小點 */
+.day-dot-row {
+	display: flex;
+	gap: 2px;
+}
+
+.day-dot {
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: var(--color-border);
+	transition: background 0.2s;
+}
+
+.day-dot--done {
+	background: var(--color-sage);
+}
+
+.day-tab--today .day-dot {
+	background: rgba(255,255,255,0.35);
+}
+
+.day-tab--today .day-dot.day-dot--done {
+	background: rgba(255,255,255,0.95);
 }
 
 /* ── 當天內容 ── */

@@ -247,6 +247,12 @@ onMounted(loadCheckins)
 				</section>
 			</div>
 			</div><!-- /content-card -->
+
+			<!-- 今日全部完成 banner -->
+			<div v-if="allDoneToday" class="done-banner">
+				<p class="done-banner-title">今日保養完成</p>
+				<p class="done-banner-sub">保持下去，好肌膚從習慣開始</p>
+			</div>
 		</template>
 	</div>
 </template>
@@ -742,5 +748,29 @@ onMounted(loadCheckins)
 .tl-item--done .tl-name {
 	text-decoration: line-through;
 	color: var(--color-text-muted);
+}
+
+/* ── 完成慶祝 banner ── */
+.done-banner {
+	margin-top: var(--space-4);
+	padding: var(--space-4) var(--space-5);
+	background: var(--color-sage-light);
+	border: 1px solid var(--color-sage);
+	border-radius: var(--radius-md);
+	text-align: center;
+}
+
+.done-banner-title {
+	font-family: var(--font-heading);
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--color-sage);
+	margin-bottom: var(--space-1);
+}
+
+.done-banner-sub {
+	font-family: var(--font-body);
+	font-size: 12px;
+	color: var(--color-text-secondary);
 }
 </style>

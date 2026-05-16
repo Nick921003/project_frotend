@@ -188,48 +188,60 @@ onMounted(loadCheckins)
 					這天沒有安排保養步驟
 				</p>
 
-				<!-- 早晨 -->
-				<section v-if="morningItems.length" class="time-section">
-					<div class="time-label">早晨</div>
-					<div class="item-list">
+				<!-- 早晨 Timeline -->
+				<section v-if="morningItems.length" class="tl-section">
+					<div class="tl-section-header morning-header">
+						<div class="tl-section-icon morning-icon" aria-hidden="true" />
+						<span class="tl-section-title">早晨</span>
+						<span class="tl-section-count">{{ morningDone }} / {{ morningItems.length }}</span>
+					</div>
+					<div class="tl-list">
 						<div
 							v-for="(item, idx) in morningItems"
 							:key="item.id"
-							class="item-row"
+							class="tl-item"
+							:class="{ 'tl-item--done': checkedItemIds.has(item.id) }"
+							@click="handleToggleCheckin(item.id)"
 						>
-							<span class="item-num">{{ idx + 1 }}</span>
-							<span class="item-name">{{ item.product_name }}</span>
-							<button
-								class="checkin-btn"
-								:class="{ 'checkin-btn--done': checkedItemIds.has(item.id) }"
+							<div
+								class="tl-node"
+								:class="{ 'tl-node--done': checkedItemIds.has(item.id) }"
 								:aria-label="checkedItemIds.has(item.id) ? '取消打卡' : '打卡'"
-								@click="handleToggleCheckin(item.id)"
 							>
-								<span class="checkin-icon" />
-							</button>
+								<span v-if="!checkedItemIds.has(item.id)" class="tl-node-num">{{ idx + 1 }}</span>
+							</div>
+							<div class="tl-body">
+								<span class="tl-name">{{ item.product_name }}</span>
+							</div>
 						</div>
 					</div>
 				</section>
 
-				<!-- 晚間 -->
-				<section v-if="eveningItems.length" class="time-section">
-					<div class="time-label">晚間</div>
-					<div class="item-list">
+				<!-- 晚間 Timeline -->
+				<section v-if="eveningItems.length" class="tl-section">
+					<div class="tl-section-header evening-header">
+						<div class="tl-section-icon evening-icon" aria-hidden="true" />
+						<span class="tl-section-title">晚間</span>
+						<span class="tl-section-count">{{ eveningDone }} / {{ eveningItems.length }}</span>
+					</div>
+					<div class="tl-list">
 						<div
 							v-for="(item, idx) in eveningItems"
 							:key="item.id"
-							class="item-row"
+							class="tl-item"
+							:class="{ 'tl-item--done': checkedItemIds.has(item.id) }"
+							@click="handleToggleCheckin(item.id)"
 						>
-							<span class="item-num">{{ idx + 1 }}</span>
-							<span class="item-name">{{ item.product_name }}</span>
-							<button
-								class="checkin-btn"
-								:class="{ 'checkin-btn--done': checkedItemIds.has(item.id) }"
+							<div
+								class="tl-node"
+								:class="{ 'tl-node--done': checkedItemIds.has(item.id) }"
 								:aria-label="checkedItemIds.has(item.id) ? '取消打卡' : '打卡'"
-								@click="handleToggleCheckin(item.id)"
 							>
-								<span class="checkin-icon" />
-							</button>
+								<span v-if="!checkedItemIds.has(item.id)" class="tl-node-num">{{ idx + 1 }}</span>
+							</div>
+							<div class="tl-body">
+								<span class="tl-name">{{ item.product_name }}</span>
+							</div>
 						</div>
 					</div>
 				</section>
@@ -576,6 +588,159 @@ onMounted(loadCheckins)
 .progress-sub {
 	font-family: var(--font-body);
 	font-size: 11px;
+	color: var(--color-text-muted);
+}
+
+/* ── Timeline 步驟區塊 ── */
+.tl-section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+}
+
+.tl-section-header {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-1) var(--space-3);
+	border-left: 3px solid var(--color-accent);
+	background: var(--color-surface-alt);
+	border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.morning-header { border-left-color: var(--color-amber); }
+.evening-header { border-left-color: var(--color-sage); }
+
+.tl-section-icon {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.morning-icon { background: var(--color-amber); }
+.evening-icon { background: var(--color-sage); }
+
+.tl-section-title {
+	font-family: var(--font-heading);
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-text-secondary);
+	flex: 1;
+}
+
+.tl-section-count {
+	font-family: var(--font-body);
+	font-size: 11px;
+	color: var(--color-text-muted);
+	background: var(--color-surface);
+	border-radius: var(--radius-pill);
+	padding: 1px 8px;
+	border: 1px solid var(--color-border);
+}
+
+.tl-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	position: relative;
+	padding-left: 4px;
+}
+
+.tl-list::before {
+	content: '';
+	position: absolute;
+	left: 19px;
+	top: 15px;
+	bottom: 15px;
+	width: 2px;
+	background: var(--color-border);
+	border-radius: 1px;
+}
+
+.tl-item {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	cursor: pointer;
+	position: relative;
+}
+
+.tl-node {
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	border: 2px solid var(--color-border);
+	background: var(--color-surface);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	z-index: 1;
+	transition: background 0.2s, border-color 0.2s, transform 0.15s;
+	position: relative;
+}
+
+.tl-item:hover .tl-node {
+	border-color: var(--color-accent);
+	transform: scale(1.08);
+}
+
+.tl-node--done {
+	background: var(--color-sage);
+	border-color: var(--color-sage);
+}
+
+.tl-node--done::after {
+	content: '';
+	position: absolute;
+	top: 5px;
+	left: 9px;
+	width: 7px;
+	height: 11px;
+	border: 2px solid #fff;
+	border-top: none;
+	border-left: none;
+	transform: rotate(45deg);
+}
+
+.tl-node-num {
+	font-size: 11px;
+	color: var(--color-text-muted);
+	font-weight: 700;
+	line-height: 1;
+}
+
+.tl-body {
+	flex: 1;
+	background: var(--color-surface-alt);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	padding: var(--space-3) var(--space-4);
+	transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+}
+
+.tl-item:hover .tl-body {
+	border-color: var(--color-accent);
+	background: var(--color-accent-light);
+}
+
+.tl-item--done .tl-body {
+	background: var(--color-sage-light);
+	border-color: #c3d9c6;
+	opacity: 0.72;
+}
+
+.tl-name {
+	font-family: var(--font-body);
+	font-size: 14px;
+	color: var(--color-text-primary);
+	font-weight: 500;
+	transition: color 0.2s;
+}
+
+.tl-item--done .tl-name {
+	text-decoration: line-through;
 	color: var(--color-text-muted);
 }
 </style>

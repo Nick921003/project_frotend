@@ -134,6 +134,25 @@ onMounted(loadCheckins)
 				<NuxtLink :to="`/routines/${routineId}`" class="edit-btn">編輯</NuxtLink>
 			</div>
 
+			<!-- 今日進度卡 -->
+			<div class="progress-card">
+				<div class="progress-top">
+					<span class="progress-label">今日進度</span>
+					<span class="progress-count">
+						{{ doneToday }}<span class="progress-count-total"> / {{ totalToday }} 步驟</span>
+					</span>
+				</div>
+				<div class="progress-bar-bg">
+					<div
+						class="progress-bar-fill"
+						:style="{ width: totalToday > 0 ? (doneToday / totalToday * 100) + '%' : '0%' }"
+					/>
+				</div>
+				<p class="progress-sub">
+					早晨 {{ morningDone }}/{{ morningItems.length }} 完成・晚間 {{ eveningDone }}/{{ eveningItems.length }} 完成
+				</p>
+			</div>
+
 			<!-- 內容卡片 -->
 			<div class="content-card">
 			<!-- 星期 tab -->
@@ -452,5 +471,63 @@ onMounted(loadCheckins)
 	border-top: none;
 	border-left: none;
 	transform: rotate(45deg);
+}
+
+/* ── 進度卡 ── */
+.progress-card {
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	padding: var(--space-4) var(--space-5);
+	margin-bottom: var(--space-4);
+	box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.progress-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--space-2);
+}
+
+.progress-label {
+	font-family: var(--font-body);
+	font-size: 13px;
+	color: var(--color-text-secondary);
+}
+
+.progress-count {
+	font-family: var(--font-heading);
+	font-size: 22px;
+	font-weight: 700;
+	color: var(--color-accent);
+}
+
+.progress-count-total {
+	font-family: var(--font-body);
+	font-size: 13px;
+	font-weight: 400;
+	color: var(--color-text-muted);
+}
+
+.progress-bar-bg {
+	height: 8px;
+	background: var(--color-surface-alt);
+	border-radius: var(--radius-pill);
+	overflow: hidden;
+	margin-bottom: var(--space-2);
+}
+
+.progress-bar-fill {
+	height: 100%;
+	background: linear-gradient(90deg, var(--color-sage) 0%, var(--color-accent) 100%);
+	border-radius: var(--radius-pill);
+	transition: width 0.4s ease;
+}
+
+.progress-sub {
+	font-family: var(--font-body);
+	font-size: 11px;
+	color: var(--color-text-muted);
 }
 </style>

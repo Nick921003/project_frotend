@@ -39,6 +39,13 @@ const DAY_LABELS = ['日', '一', '二', '三', '四', '五', '六']
 const todayDow = new Date().getDay() // 0=Sun … 6=Sat
 const selectedDow = ref(todayDow)
 
+// 每個星期 tab 顯示幾個小點（最多 3 點）
+const getTabDotCount = (dow: number): number => {
+	if (dow === todayDow) return Math.min(totalToday.value, 3)
+	const hasItems = (routine.value?.items ?? []).some(i => i.day_of_week === dow)
+	return hasItems ? 2 : 0
+}
+
 // ──────────────────────────────────────────────
 // 當天篩選項目
 // ──────────────────────────────────────────────
@@ -56,6 +63,23 @@ const eveningItems = computed(() =>
 	dayItems.value
 		.filter((i) => i.time_of_day === 'evening')
 		.sort((a, b) => a.sequence_order - b.sequence_order)
+)
+
+// ──────────────────────────────────────────────
+// 今日進度計算
+// ──────────────────────────────────────────────
+const totalToday = computed(() => dayItems.value.length)
+const doneToday  = computed(() =>
+	dayItems.value.filter(i => checkedItemIds.value.has(i.id)).length
+)
+const allDoneToday = computed(() =>
+	totalToday.value > 0 && doneToday.value === totalToday.value
+)
+const morningDone = computed(() =>
+	morningItems.value.filter(i => checkedItemIds.value.has(i.id)).length
+)
+const eveningDone = computed(() =>
+	eveningItems.value.filter(i => checkedItemIds.value.has(i.id)).length
 )
 
 // ──────────────────────────────────────────────

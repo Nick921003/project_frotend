@@ -384,3 +384,14 @@ ul, ol {
   font-size: 15px;
   margin-bottom: var(--space-4);
 }
+
+/* ─── Mobile ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .card {
+    padding: var(--space-5);
+  }
+  .page-container--wide {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+}

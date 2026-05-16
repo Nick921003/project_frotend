@@ -61,26 +61,6 @@
             >
               從 Google Drive 選取
             </button>
-            <span v-if="imageBase64Array.length > 0" class="hint-text">
-              已選擇 {{ imageBase64Array.length }} 張
-            </span>
-          </div>
-
-          <div v-if="imageBase64Array.length > 0" class="preview-grid">
-            <div v-for="(src, idx) in imageBase64Array" :key="idx" class="preview-item">
-              <div
-                v-if="src.startsWith('data:image/heic') || src.startsWith('data:image/heif')"
-                class="preview-heic"
-              >HEIC</div>
-              <img v-else :src="src" alt="預覽" class="preview-img" @click="previewSrc = src" />
-              <button class="preview-remove" :disabled="isLoading" @click="removeImage(idx)">×</button>
-            </div>
-          </div>
-
-          <!-- 圖片放大 lightbox -->
-          <div v-if="previewSrc" class="lightbox" @click="previewSrc = null">
-            <img :src="previewSrc" class="lightbox-img" @click.stop />
-            <button class="lightbox-close" @click="previewSrc = null">×</button>
           </div>
 
           <p v-if="fromRoutine" class="hint-text hint-text--accent">
@@ -94,7 +74,7 @@
           :disabled="imageBase64Array.length === 0 || isLoading"
           @click="analyzeIngredients"
         >
-          {{ isLoading ? '🤖 AI 分析中...' : '開始分析成分' }}
+          {{ isLoading ? 'AI 分析中...' : '開始分析成分' }}
         </button>
 
         <!-- 加入保養品櫃 -->
@@ -104,7 +84,7 @@
           :disabled="isSaving"
           @click="saveToCabinet"
         >
-          {{ isSaving ? '儲存中...' : '✅ 加入保養品櫃' }}
+          {{ isSaving ? '儲存中...' : '加入保養品櫃' }}
         </button>
 
         <div v-if="saveMsg" class="status-box status-success">{{ saveMsg }}</div>
@@ -114,10 +94,28 @@
 
       <!-- 右欄：結果區（可滾動） -->
       <div class="analyze-right">
-        <div v-if="!result?.data?.analysis" class="result-placeholder">
+
+        <!-- 狀態 A：尚未選圖 -->
+        <div v-if="!result?.data?.analysis && imageBase64Array.length === 0" class="result-placeholder">
           <p>上傳成分表照片後，分析結果會顯示在這裡</p>
         </div>
 
+        <!-- 狀態 B：已選圖，等待分析 -->
+        <div v-else-if="!result?.data?.analysis && imageBase64Array.length > 0" class="preview-panel">
+          <p class="preview-count-label">已選擇 {{ imageBase64Array.length }} 張，確認無誤後點擊「開始分析成分」</p>
+          <div class="preview-grid">
+            <div v-for="(src, idx) in imageBase64Array" :key="idx" class="preview-item">
+              <div
+                v-if="src.startsWith('data:image/heic') || src.startsWith('data:image/heif')"
+                class="preview-heic"
+              >HEIC</div>
+              <img v-else :src="src" alt="預覽" class="preview-img" @click="previewSrc = src" />
+              <button class="preview-remove" :disabled="isLoading" @click="removeImage(idx)">×</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 狀態 C：分析結果 -->
         <div v-else class="results-section">
           <!-- 膚況未設定時的引導卡片 -->
           <div v-if="showProfileSetupPrompt" class="profile-prompt-card">
@@ -133,67 +131,94 @@
             </button>
           </div>
 
-          <h3 class="section-title">分析報告</h3>
           <div v-if="result.data.detectedProductName" class="detected-product-name">
             <span class="detected-label">辨識產品</span>
-            <strong>{{ result.data.detectedProductName }}</strong>
+            <span>{{ result.data.detectedProductName }}</span>
           </div>
 
-          <div
-            v-if="result.data.analysis.regulatoryAlerts.length > 0"
-            class="alert-block alert-red"
-          >
-            <h4>🔴 法規警告（限量 / 禁用成分）</h4>
-            <ul>
-              <li v-for="item in result.data.analysis.regulatoryAlerts" :key="item.inci_name">
-                <strong>{{ item.inci_name }}</strong> —
-                <span>{{ item.warning || item.limit }}</span>
-              </li>
-            </ul>
+          <!-- AI 總評（品名下方） -->
+          <div v-if="result.data.overallSummary" class="result-summary result-summary--top">
+            <div class="result-summary__label">AI 配方師總評</div>
+            <p class="result-summary__body">{{ result.data.overallSummary }}</p>
           </div>
 
-          <div
-            v-if="result.data.analysis.limitAlerts?.length > 0"
-            class="alert-block alert-orange"
-          >
-            <h4>🟠 含限量成分（濃度未知，無法確認是否超標）</h4>
-            <ul>
-              <li v-for="item in result.data.analysis.limitAlerts" :key="item.inci_name">
-                <strong>{{ item.inci_name }}</strong> — 法規限量：{{ item.limit }}
-              </li>
-            </ul>
+          <!-- 法規警告 -->
+          <div v-if="result.data.analysis.regulatoryAlerts.length > 0" class="result-section">
+            <div class="result-section__header">
+              <span class="result-dot result-dot--red"></span>
+              <span class="result-label">法規警告（限量 / 禁用成分）</span>
+              <span class="result-count">{{ result.data.analysis.regulatoryAlerts.length }}</span>
+            </div>
+            <div class="result-rows">
+              <div v-for="item in result.data.analysis.regulatoryAlerts" :key="item.inci_name" class="result-row">
+                <span class="result-inci">{{ item.inci_name }}</span>
+                <span class="result-note">{{ item.warning || item.limit }}</span>
+              </div>
+            </div>
           </div>
 
-          <div
-            v-if="!suppressWarnings && result.data.analysis.skinTypeAlerts.length > 0"
-            class="alert-block alert-yellow"
-          >
-            <h4>🟡 膚質地雷（針對 {{ selectedSkinType }}）</h4>
-            <ul>
-              <li v-for="item in result.data.analysis.skinTypeAlerts" :key="item.inci_name">
-                <strong>{{ item.inci_name }}</strong> — {{ item.risk_description }}
-              </li>
-            </ul>
+          <!-- 含限量成分 -->
+          <div v-if="result.data.analysis.limitAlerts?.length > 0" class="result-section">
+            <div class="result-section__header">
+              <span class="result-dot result-dot--orange"></span>
+              <span class="result-label">含限量成分（濃度未知，無法確認是否超標）</span>
+              <span class="result-count">{{ result.data.analysis.limitAlerts.length }}</span>
+            </div>
+            <div class="result-rows">
+              <div v-for="item in result.data.analysis.limitAlerts" :key="item.inci_name" class="result-row">
+                <span class="result-inci">{{ item.inci_name }}</span>
+                <span class="result-note">法規限量：{{ item.limit }}</span>
+              </div>
+            </div>
           </div>
 
-          <div class="alert-block alert-green">
-            <h4>🟢 一般成分（未觸發警報）</h4>
+          <!-- 膚質地雷 -->
+          <div v-if="!suppressWarnings && result.data.analysis.skinTypeAlerts.length > 0" class="result-section">
+            <div class="result-section__header">
+              <span class="result-dot result-dot--amber"></span>
+              <span class="result-label">膚質地雷（針對 {{ selectedSkinType }}）</span>
+              <span class="result-count">{{ result.data.analysis.skinTypeAlerts.length }}</span>
+            </div>
+            <div class="result-rows">
+              <div v-for="item in result.data.analysis.skinTypeAlerts" :key="item.inci_name" class="result-row">
+                <span class="result-inci">{{ item.inci_name }}</span>
+                <span class="result-note">{{ item.risk_description }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 一般成分（折疊） -->
+          <div class="result-section">
+            <div class="result-section__header">
+              <span class="result-dot result-dot--green"></span>
+              <span class="result-label">一般成分（未觸發警報）</span>
+              <span class="result-count">{{ result.data.analysis.safeList.length }}</span>
+            </div>
             <div class="safe-chips">
               <span
-                v-for="item in result.data.analysis.safeList"
+                v-for="item in (showAllSafe ? result.data.analysis.safeList : result.data.analysis.safeList.slice(0, 12))"
                 :key="typeof item === 'string' ? item : item.inci_name"
-                class="badge badge-muted"
+                class="safe-chip"
                 :title="typeof item === 'object' && item.function_summary ? item.function_summary : undefined"
               >{{ typeof item === 'string' ? item : item.inci_name }}</span>
               <span v-if="result.data.analysis.safeList.length === 0" class="hint-text">無</span>
             </div>
-          </div>
-
-          <div v-if="result.data.overallSummary" class="alert-block alert-gold">
-            <h4>— AI 配方師總評</h4>
-            <p style="margin: 0; line-height: 1.7;">{{ result.data.overallSummary }}</p>
+            <button
+              v-if="result.data.analysis.safeList.length > 12"
+              class="safe-toggle"
+              @click="showAllSafe = !showAllSafe"
+            >
+              {{ showAllSafe ? '收起' : `展開全部 (${result.data.analysis.safeList.length})` }}
+            </button>
           </div>
         </div>
+
+        <!-- 圖片放大 lightbox -->
+        <div v-if="previewSrc" class="lightbox" @click="previewSrc = null">
+          <img :src="previewSrc" class="lightbox-img" @click.stop />
+          <button class="lightbox-close" @click="previewSrc = null">×</button>
+        </div>
+
       </div>
 
     </div>
@@ -309,6 +334,7 @@ const handleImageUpload = async (event) => {
 }
 
 const previewSrc = ref(null)
+const showAllSafe = ref(false)
 
 const { openPicker } = useGoogleDrivePicker()
 
@@ -531,11 +557,25 @@ onMounted(() => {
   pointer-events: none;
 }
 
+.preview-panel {
+  padding: var(--space-5);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-light);
+  min-height: 300px;
+  flex: 1;
+}
+
+.preview-count-label {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-4);
+}
+
 .preview-grid {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
-  margin-top: var(--space-4);
 }
 
 .preview-item {
@@ -544,11 +584,12 @@ onMounted(() => {
 }
 
 .preview-img {
-  max-height: 120px;
+  max-height: 260px;
   border-radius: var(--radius-md);
   display: block;
   border: 1px solid var(--color-border-light);
   cursor: zoom-in;
+  object-fit: cover;
 }
 
 .lightbox {
@@ -632,9 +673,7 @@ onMounted(() => {
   border-color: #7A9870;
 }
 
-.results-section {
-  margin-top: var(--space-8);
-}
+.results-section {}
 
 .profile-prompt-card {
   display: flex;
@@ -681,10 +720,171 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
+/* ── 診斷報告式結果卡 ── */
+.result-section {
+  padding: var(--space-5) 0;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.result-section:first-of-type {
+  border-top: none;
+  padding-top: var(--space-3);
+}
+
+.result-section__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.result-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.result-dot--red    { background: var(--color-red); }
+.result-dot--orange { background: var(--color-amber); }
+.result-dot--amber  { background: #D4AA80; }
+.result-dot--green  { background: var(--color-sage); }
+
+.result-label {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--color-text-secondary);
+  flex: 1;
+}
+
+.result-count {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-pill);
+  padding: 2px 9px;
+  letter-spacing: 0.02em;
+}
+
+.result-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.result-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-light);
+  font-size: 14px;
+}
+
+.result-row:last-child { border-bottom: none; }
+
+.result-inci {
+  font-weight: 500;
+  color: var(--color-text-primary);
+  min-width: 200px;
+}
+
+.result-note {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.result-summary {
+  padding: var(--space-5) 0 0;
+  border-top: 1px solid var(--color-border-light);
+  margin-top: var(--space-2);
+}
+
+.result-summary--top {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.result-summary__label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.result-summary__body {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.safe-toggle {
+  margin-top: var(--space-3);
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+  letter-spacing: 0.02em;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.safe-toggle:hover {
+  color: var(--color-accent);
+}
+
+/* 一般成分 chips */
 .safe-chips {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   margin-top: var(--space-2);
+}
+
+.safe-chip {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  padding: 3px 10px;
+  cursor: default;
+  transition: background 0.15s;
+}
+
+.safe-chip:hover {
+  background: var(--color-border-light);
+}
+
+/* ─── Mobile ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* 成分列改垂直堆疊，避免 min-width overflow */
+  .result-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .result-inci {
+    min-width: unset;
+  }
+  /* 膚況提示卡改垂直 */
+  .profile-prompt-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  /* result-label 在極窄螢幕縮字 */
+  .result-label {
+    font-size: 12px;
+  }
 }
 </style>

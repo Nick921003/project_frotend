@@ -46,7 +46,7 @@
               選擇照片（可多選）
               <input
                 type="file"
-                accept="image/jpeg, image/png, image/webp"
+                accept="image/*"
                 multiple
                 :disabled="isLoading"
                 style="display: none;"
@@ -54,7 +54,7 @@
               />
             </label>
             <button
-              class="btn btn-secondary btn-sm"
+              class="btn btn-secondary btn-sm drive-btn-desktop"
               :disabled="isLoading"
               type="button"
               @click="handleDrivePick"
@@ -313,23 +313,45 @@ const compressImage = (file) => {
   })
 }
 
+const isHeicFile = (file: File) => {
+  return file.type === 'image/heic' || file.type === 'image/heif' ||
+    /\.(heic|heif)$/i.test(file.name)
+}
+
+const convertHeicFile = async (file: File): Promise<string> => {
+  const form = new FormData()
+  form.append('file', file, file.name || 'image.heic')
+  const result = await $fetch<{ base64: string }>('/api/convert-heic', {
+    method: 'POST',
+    body: form,
+  })
+  return result.base64
+}
+
 const handleImageUpload = async (event) => {
   errorMsg.value = null
   const files = event.target.files
   if (!files || files.length === 0) return
 
+  const errors: string[] = []
   for (const file of files) {
     if (file.size > 20 * 1024 * 1024) {
-      errorMsg.value = `「${file.name}」過大，請上傳小於 20MB 的照片。`
+      errors.push(`「${file.name}」過大（上限 20MB）`)
       continue
     }
     try {
-      const compressed = await compressImage(file)
-      imageBase64Array.value.push(compressed)
+      let base64: string
+      if (isHeicFile(file)) {
+        base64 = await convertHeicFile(file)
+      } else {
+        base64 = await compressImage(file)
+      }
+      imageBase64Array.value.push(base64)
     } catch {
-      errorMsg.value = '圖片讀取失敗，請重試。'
+      errors.push(`「${file.name}」讀取失敗`)
     }
   }
+  if (errors.length) errorMsg.value = errors.join('、') + '，請重試。'
   event.target.value = ''
 }
 
@@ -867,6 +889,13 @@ onMounted(() => {
 }
 
 /* ─── Mobile ─────────────────────────────────────────────── */
+/* 觸控裝置（手機、平板）隱藏 Drive 按鈕，原生選擇器已內建雲端硬碟 */
+@media (pointer: coarse) {
+  .drive-btn-desktop {
+    display: none;
+  }
+}
+
 @media (max-width: 640px) {
   /* 成分列改垂直堆疊，避免 min-width overflow */
   .result-row {

@@ -401,8 +401,13 @@ const goNextCabinetPage = async () => {
   flex: 1;
 }
 
+.toolbar-search::placeholder {
+  color: var(--color-text-secondary);
+}
+
 .toolbar-select {
   width: 180px;
+  background: var(--color-surface);
 }
 
 /* Table */
@@ -471,6 +476,11 @@ const goNextCabinetPage = async () => {
   }
   .product-name {
     max-width: 160px;
+  }
+  .toolbar-select {
+    width: auto;
+    min-width: 90px;
+    flex-shrink: 0;
   }
 }
 

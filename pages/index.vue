@@ -225,7 +225,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { onMounted, ref, watchEffect, computed } from 'vue'
 import { PRODUCT_CATEGORIES, resolveProductCategory } from '~/utils/productCategories'
 import { useUserProfile } from '~/stores/useUserProfile'

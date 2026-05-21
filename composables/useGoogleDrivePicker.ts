@@ -4,7 +4,6 @@ import { ref } from 'vue';
 // token 存在記憶體，關頁面消失；重新選取才會再授權
 export function useGoogleDrivePicker() {
 	const config = useRuntimeConfig()
-	const user = useSupabaseUser()
 	const _token = ref<string | null>(null)
 
 	// 動態載入 gapi + Google Identity Services，避免影響頁面啟動速度
@@ -39,13 +38,13 @@ export function useGoogleDrivePicker() {
 	}
 
 	// 取得 Google OAuth token（Drive readonly scope）
-	const _getToken = (): Promise<string> => {
+	const _getToken = (loginHint?: string): Promise<string> => {
 		if (_token.value) return Promise.resolve(_token.value)
 		return new Promise((resolve, reject) => {
 			const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
 				client_id: config.public.googleClientId,
 				scope: 'https://www.googleapis.com/auth/drive.readonly',
-				login_hint: user.value?.email || undefined,
+				login_hint: loginHint || undefined,
 				callback: (res: any) => {
 					if (res.error) { reject(new Error(res.error)); return }
 					_token.value = res.access_token
@@ -56,13 +55,12 @@ export function useGoogleDrivePicker() {
 		})
 	}
 
-	// 壓縮 Blob 至長邊 2048px，JPEG 0.85
-	const _compress = (blob: Blob): Promise<string> => {
+	// 核心壓縮：接受任何 img.src 可用的 URL（object URL 或 data URL）
+	const _compressUrl = (srcUrl: string, isObjectUrl = false): Promise<string> => {
 		return new Promise((resolve, reject) => {
-			const url = URL.createObjectURL(blob)
 			const img = new Image()
 			img.onload = () => {
-				const MAX = 2048
+				const MAX = 1024
 				let width = img.naturalWidth
 				let height = img.naturalHeight
 				if (width > MAX || height > MAX) {
@@ -72,22 +70,29 @@ export function useGoogleDrivePicker() {
 				const canvas = document.createElement('canvas')
 				canvas.width = width
 				canvas.height = height
-				canvas.getContext('2d').drawImage(img, 0, 0, width, height)
-				URL.revokeObjectURL(url)
-				resolve(canvas.toDataURL('image/jpeg', 0.85))
+				canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
+				if (isObjectUrl) URL.revokeObjectURL(srcUrl)
+				const result = canvas.toDataURL('image/jpeg', 0.75)
+				resolve(result)
 			}
-			img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('圖片壓縮失敗')) }
-			img.src = url
+			img.onerror = () => { if (isObjectUrl) URL.revokeObjectURL(srcUrl); reject(new Error('圖片壓縮失敗')) }
+			img.src = srcUrl
 		})
 	}
 
+	const _compress = (blob: Blob): Promise<string> =>
+		_compressUrl(URL.createObjectURL(blob), true)
+
 	const openPicker = async (
 		onPicked: (base64: string) => void,
-		onError?: (msg: string) => void
+		onError?: (msg: string) => void,
+		onProcessingStart?: () => void,
+		onProcessingEnd?: () => void,
+		loginHint?: string
 	) => {
 		try {
 			await _loadScripts()
-			const token = await _getToken()
+			const token = await _getToken(loginHint)
 			const win = window as any
 
 			new win.google.picker.PickerBuilder()
@@ -97,6 +102,7 @@ export function useGoogleDrivePicker() {
 				.setDeveloperKey(config.public.googleApiKey)
 				.setCallback(async (data: any) => {
 					if (data.action !== win.google.picker.Action.PICKED) return
+					onProcessingStart?.()
 					// 多選：逐一下載壓縮
 					for (const file of data.docs) {
 						const resp = await fetch(
@@ -116,7 +122,7 @@ if (!resp.ok) { onError?.(`Drive 下載失敗（${resp.status}）`); continue }
 						// Google Drive 可能對 HEIC 回傳 application/octet-stream，需強制正確 type
 						const isHeic = mimeType === 'image/heic' || mimeType === 'image/heif' ||
 							!!(file.name || '').toLowerCase().match(/\.(heic|heif)$/)
-						const effectiveMime = isHeic ? 'image/heic' : mimeType
+	const effectiveMime = isHeic ? 'image/heic' : mimeType
 						const blob = new Blob([buffer], { type: effectiveMime })
 
 						let base64: string
@@ -136,7 +142,8 @@ if (!resp.ok) { onError?.(`Drive 下載失敗（${resp.status}）`); continue }
 									method: 'POST',
 									body: form
 								})
-								base64 = result.base64
+								// 轉換後再壓縮到 1024px / 0.75
+								base64 = await _compressUrl(result.base64, false)
 							} catch {
 								// 轉換失敗：回退 HEIC base64（Gemini 仍可分析，preview 顯示佔位框）
 								base64 = heicBase64
@@ -146,6 +153,7 @@ if (!resp.ok) { onError?.(`Drive 下載失敗（${resp.status}）`); continue }
 						}
 						onPicked(base64)
 					}
+					onProcessingEnd?.()
 				})
 				.build()
 				.setVisible(true)

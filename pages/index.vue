@@ -96,13 +96,19 @@
       <div class="analyze-right">
 
         <!-- 狀態 A：尚未選圖 -->
-        <div v-if="!result?.data?.analysis && imageBase64Array.length === 0" class="result-placeholder">
+        <div v-if="!result?.data?.analysis && imageBase64Array.length === 0 && !isUploading" class="result-placeholder">
           <p>上傳成分表照片後，分析結果會顯示在這裡</p>
         </div>
 
-        <!-- 狀態 B：已選圖，等待分析 -->
-        <div v-else-if="!result?.data?.analysis && imageBase64Array.length > 0" class="preview-panel">
-          <p class="preview-count-label">已選擇 {{ imageBase64Array.length }} 張，確認無誤後點擊「開始分析成分」</p>
+        <!-- 狀態 B：已選圖 / 上傳中，等待分析 -->
+        <div v-else-if="!result?.data?.analysis && (imageBase64Array.length > 0 || isUploading)" class="preview-panel">
+          <p class="preview-count-label">
+            <template v-if="isUploading">
+              <span class="upload-spinner"></span>
+              上傳中，請稍候...
+            </template>
+            <template v-else>已選擇 {{ imageBase64Array.length }} 張，確認無誤後點擊「開始分析成分」</template>
+          </p>
           <div class="preview-grid">
             <div v-for="(src, idx) in imageBase64Array" :key="idx" class="preview-item">
               <div
@@ -111,6 +117,7 @@
               >HEIC</div>
               <img v-else :src="src" alt="預覽" class="preview-img" @click="previewSrc = src" />
               <button class="preview-remove" :disabled="isLoading" @click="removeImage(idx)">×</button>
+              <span class="preview-size-badge">{{ Math.round(src.length * 0.75 / 1024) }} KB</span>
             </div>
           </div>
         </div>
@@ -226,7 +233,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watchEffect, computed } from 'vue'
+import { onMounted, ref, watchEffect, computed, nextTick } from 'vue'
 import { PRODUCT_CATEGORIES, resolveProductCategory } from '~/utils/productCategories'
 import { useUserProfile } from '~/stores/useUserProfile'
 
@@ -258,6 +265,7 @@ const router = useRouter()
 const selectedSkinType = ref('oily')
 const imageBase64Array = ref([])
 const isLoading = ref(false)
+const isUploading = ref(false)
 const isSaving = ref(false)
 const result = ref(null)
 const errorMsg = ref(null)
@@ -288,13 +296,13 @@ watchEffect(async () => {
   }
 })
 
-// 壓縮圖片：長邊縮到 2048px，JPEG quality 0.85，保留 OCR 清晰度
+// 壓縮圖片：長邊縮到 1024px，JPEG quality 0.75，符合 Vercel 4.5MB body 限制
 const compressImage = (file) => {
   return new Promise((resolve, reject) => {
     const img = new Image()
     const url = URL.createObjectURL(file)
     img.onload = () => {
-      const MAX = 2048
+      const MAX = 1024
       let width = img.naturalWidth
       let height = img.naturalHeight
       if (width > MAX || height > MAX) {
@@ -306,7 +314,8 @@ const compressImage = (file) => {
       canvas.height = height
       canvas.getContext('2d').drawImage(img, 0, 0, width, height)
       URL.revokeObjectURL(url)
-      resolve(canvas.toDataURL('image/jpeg', 0.85))
+      const result = canvas.toDataURL('image/jpeg', 0.75)
+      resolve(result)
     }
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('圖片載入失敗')) }
     img.src = url
@@ -333,6 +342,8 @@ const handleImageUpload = async (event) => {
   const files = event.target.files
   if (!files || files.length === 0) return
 
+  isUploading.value = true
+  await nextTick() // 讓 Vue 先更新 DOM 顯示 spinner，再開始壓縮
   const errors: string[] = []
   for (const file of files) {
     if (file.size > 20 * 1024 * 1024) {
@@ -346,11 +357,17 @@ const handleImageUpload = async (event) => {
       } else {
         base64 = await compressImage(file)
       }
+      // 壓縮後 base64 超過 1.5MB → 單張已過大，拒絕
+      if (base64.length > 1.5 * 1024 * 1024) {
+        errors.push(`「${file.name}」壓縮後仍過大，請改用較小圖片`)
+        continue
+      }
       imageBase64Array.value.push(base64)
     } catch {
       errors.push(`「${file.name}」讀取失敗`)
     }
   }
+  isUploading.value = false
   if (errors.length) errorMsg.value = errors.join('、') + '，請重試。'
   event.target.value = ''
 }
@@ -363,7 +380,10 @@ const { openPicker } = useGoogleDrivePicker()
 const handleDrivePick = () => {
   openPicker(
     (base64) => { imageBase64Array.value.push(base64) },
-    (msg) => { errorMsg.value = msg }
+    (msg) => { errorMsg.value = msg },
+    () => { isUploading.value = true },
+    () => { isUploading.value = false },
+    user.value?.email || undefined
   )
 }
 
@@ -373,6 +393,13 @@ const removeImage = (idx) => {
 
 const analyzeIngredients = async () => {
   if (imageBase64Array.value.length === 0) return
+
+  // 送出前檢查總 base64 大小，避免超過 Vercel 4.5MB body 限制
+  const totalBytes = imageBase64Array.value.reduce((sum, b64) => sum + b64.length, 0)
+  if (totalBytes > 3.5 * 1024 * 1024) {
+    errorMsg.value = '圖片總大小過大，請減少張數或更換較小的圖片'
+    return
+  }
 
   isLoading.value = true
   result.value = null
@@ -677,6 +704,34 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.preview-size-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.upload-spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--color-border-light);
+  border-top-color: var(--color-text-muted);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .action-btn {

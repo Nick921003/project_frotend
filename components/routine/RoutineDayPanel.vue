@@ -298,9 +298,9 @@ const getEveningItems = (dayIdx: number) =>
 .section h2 { font-size: 17px; margin-bottom: var(--space-3); font-family: var(--font-heading); color: var(--color-text-primary); }
 
 .day-tabs { display: flex; gap: 4px; margin-bottom: 15px; }
-.day-tab { flex: 1; padding: 8px 0; border-radius: var(--radius-pill); border: 1px solid var(--color-border); background: var(--color-surface-alt); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 14px; transition: all 0.2s; color: var(--color-text-secondary); }
+.day-tab { flex: 1; padding: 10px 0 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); background: var(--color-surface-alt); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: all 0.2s; color: var(--color-text-secondary); position: relative; }
 .day-tab.active { background: var(--color-accent); color: #fff; border-color: var(--color-accent); box-shadow: var(--shadow-sm); }
-.tab-count { width: 6px; height: 6px; border-radius: 50%; background: var(--color-accent); flex-shrink: 0; }
+.tab-count { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: var(--color-accent); }
 .day-tab.active .tab-count { background: #fff; }
 
 .routine-theme-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; align-items: center; }
@@ -350,7 +350,7 @@ const getEveningItems = (dayIdx: number) =>
 .btn-remove { background: var(--color-red-light); color: var(--color-red); border: none; border-radius: var(--radius-sm); cursor: pointer; padding: 2px 8px; font-weight: 700; font-size: 14px; transition: background 0.2s; }
 .btn-remove:hover { background: #F0D0D0; }
 
-.tab-conflict { font-size: 11px; color: var(--color-amber); margin-left: 2px; }
+.tab-conflict { position: absolute; top: 2px; right: 4px; font-size: 10px; color: var(--color-amber); line-height: 1; }
 .conflict-banner {
 	background: #FFF8EE;
 	border: 1px solid var(--color-amber);
@@ -383,6 +383,9 @@ const getEveningItems = (dayIdx: number) =>
 
 @media (max-width: 768px) {
   .section { padding: var(--space-4); }
-  .day-tab { font-size: 13px; padding: 6px 0; }
+  .day-tabs { gap: 2px; }
+  .day-tab { font-size: 13px; padding: 8px 0 12px; }
+  .tab-count { bottom: 3px; width: 4px; height: 4px; }
+  .tab-conflict { top: 1px; right: 2px; font-size: 9px; }
 }
 </style>

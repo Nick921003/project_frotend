@@ -20,7 +20,7 @@
         <button class="btn btn-secondary btn-sm back-btn" @click="router.back()">← 返回排程</button>
         <div class="card pref-card">
           <h2 class="section-title" style="font-size: 18px;">🔍 AI 成分推薦</h2>
-          <p class="pref-desc">AI 會根據您的<strong>肌質、性別</strong>與現有保養品成分，找出功效缺口，給出 2–4 條針對性証品建議</p>
+          <p class="pref-desc">AI 會根據您的<strong>肌質、性別</strong>與現有保養品成分，找出功效缺口，給出 2–4 條針對性保養建議</p>
 
           <!-- 是否包含個人困擾 toggle -->
           <div class="toggle-row">

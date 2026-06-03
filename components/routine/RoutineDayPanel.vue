@@ -95,19 +95,13 @@
               </div>
               <div class="item-actions">
                 <button
-                  v-if="item.id"
-                  @click.stop="$emit('toggle-checkin', item.id)"
-                  class="btn-checkin"
-                  :class="{ 'is-checked': checkedItemIds.has(item.id) }"
-                  title="今日打卡"
-                ><span class="checkin-icon" /></button>
-                <button
                   @click="$emit('toggle-item-lock', item)"
                   class="btn-lock"
                   :title="item.is_locked ? '解鎖' : '鎖定'"
                 >{{ item.is_locked ? '🔒' : '🔓' }}</button>
                 <button
-                  @click="$emit('remove-item', expandedDayIdx, 'morning', item.product_name)"
+                  v-if="!item.is_locked"
+                  @click="$emit('remove-item', item)"
                   class="btn-remove"
                 >×</button>
               </div>
@@ -178,19 +172,13 @@
               </div>
               <div class="item-actions">
                 <button
-                  v-if="item.id"
-                  @click.stop="$emit('toggle-checkin', item.id)"
-                  class="btn-checkin"
-                  :class="{ 'is-checked': checkedItemIds.has(item.id) }"
-                  title="今日打卡"
-                ><span class="checkin-icon" /></button>
-                <button
                   @click="$emit('toggle-item-lock', item)"
                   class="btn-lock"
                   :title="item.is_locked ? '解鎖' : '鎖定'"
                 >{{ item.is_locked ? '🔒' : '🔓' }}</button>
                 <button
-                  @click="$emit('remove-item', expandedDayIdx, 'evening', item.product_name)"
+                  v-if="!item.is_locked"
+                  @click="$emit('remove-item', item)"
                   class="btn-remove"
                 >×</button>
               </div>
@@ -258,8 +246,7 @@ const props = withDefaults(defineProps<{
 defineEmits<{
   (e: 'update:expandedDayIdx', idx: number): void;
   (e: 'toggle-item-lock', item: RoutineItem): void;
-  (e: 'remove-item', dayOfWeek: number, timeOfDay: 'morning' | 'evening', productName: string): void;
-  (e: 'toggle-checkin', itemId: string): void;
+  (e: 'remove-item', item: RoutineItem): void;
 }>();
 
 /** 記錄哪些 item 展開了 notes */

@@ -126,3 +126,10 @@ coverage/
 .worktrees/
 .gstack/
 .superpowers/
+
+# ==========================================
+# 簡報生成暫存檔（勿推送）
+# ==========================================
+slides/
+slides.html
+generate_deck.py

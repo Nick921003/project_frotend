@@ -69,7 +69,6 @@
           :checked-item-ids="checkedItemIds"
           @toggle-item-lock="toggleItemLock"
           @remove-item="removeItem"
-          @toggle-checkin="handleToggleCheckin"
         />
       </div>
 
@@ -182,20 +181,26 @@ const handleMessage = (success: boolean, text: string) => {
   if (success) setTimeout(() => { saveMessage.value = null; }, 3000);
 };
 
-const removeItem = (dayOfWeek: number, timeOfDay: 'morning' | 'evening', productName: string) => {
+const removeItem = (item: RoutineItem) => {
   if (!routine.value) return;
-  const idx = routine.value.items.findIndex(i =>
-    i.day_of_week === dayOfWeek && i.time_of_day === timeOfDay && i.product_name === productName
-  );
+  // 鎖定項目不可刪除（雙重保險）
+  if (item.is_locked) {
+    handleMessage(false, '🔒 此項目已鎖定，請先解鎖');
+    return;
+  }
+  // 用精確的物件參照或 id 定位
+  const idx = item.id
+    ? routine.value.items.findIndex(i => i.id === item.id)
+    : routine.value.items.findIndex(i =>
+        i.day_of_week === item.day_of_week &&
+        i.time_of_day === item.time_of_day &&
+        i.product_name === item.product_name
+      );
   if (idx >= 0 && routine.value) {
-    const item = routine.value.items[idx];
-    if (item?.is_locked) {
-      handleMessage(false, '🔒 此項目已鎖定，請先解鎖');
-      return;
-    }
+    const target = routine.value.items[idx];
     routine.value.items.splice(idx, 1);
     // 重新排序
-    getItemsForTimeslot(dayOfWeek, timeOfDay).forEach((item, i) => { item.sequence_order = i; });
+    getItemsForTimeslot(target.day_of_week, target.time_of_day).forEach((it, i) => { it.sequence_order = i; });
   }
 };
 

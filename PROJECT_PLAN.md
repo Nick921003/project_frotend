@@ -52,7 +52,7 @@
 | POST | `/api/cabinet/save` | 儲存分析結果 + raw_ingredients |
 | GET | `/api/cabinet/list` | 列表（含搜尋、分頁） |
 | GET | `/api/cabinet/[id]` | 單一產品詳情 |
-| PUT | `/api/cabinet/[id]` | 更新產品資訊（不含 raw_ingredients） |
+| PUT | `/api/cabinet/[id]` | 更新產品資訊（含產品名稱、分類、開封資訊與 raw_ingredients 成分文字） |
 | DELETE | `/api/cabinet/[id]` | 刪除產品 |
 
 ### Routines
@@ -80,7 +80,7 @@
 ### 其他
 | Method | 路徑 | 功能 |
 |--------|------|------|
-| POST | `/api/analyze` | 成分分析（支援訪客） |
+| POST | `/api/analyze` | 成分分析（支援訪客，支援成分照片與成分文字提取分析） |
 | POST | `/api/convert-heic` | HEIC → JPEG 轉換（heic-convert WASM，不需登入） |
 | GET | `/api/profile/get` | 取得個人資料 |
 | POST | `/api/profile/update` | 更新個人資料 |

@@ -178,18 +178,76 @@ ${knownContext}${unknownContext}
       const result = await model.generateContent(summaryPrompt);
       const parsed = JSON.parse(result.response.text());
 
-      console.log('[AIService] 生成產品總結');
-      return {
-        overview: parsed.overview || '',
-        verdict: parsed.verdict || ''
-      };
-    } catch (error: any) {
-      console.error('[AIService] 生成總結錯誤:', error.message);
-      throw new Error(`生成產品評語失敗: ${error.message}`);
-    }
-  }
+			console.log('[AIService] 生成產品總結');
+			return {
+				overview: parsed.overview || '',
+				verdict: parsed.verdict || ''
+			};
+		} catch (error: any) {
+			console.error('[AIService] 生成總結錯誤:', error.message);
+			throw new Error(`生成產品評語失敗: ${error.message}`);
+		}
+	}
 
-  private tryParseIngredients(rawIngredients: string | null): string[] {
+	/**
+	 * 將使用者輸入的成分文字轉為標準的 INCI Name 陣列
+	 */
+	async extractIngredientsFromText(
+		ingredientsText: string,
+		productName?: string
+	): Promise<{ productName: string | null; ingredients: string[] }> {
+		try {
+			const { GoogleGenerativeAI, SchemaType } = await import('@google/generative-ai');
+			const genAI = new GoogleGenerativeAI(this.config.apiKey);
+
+			const model = genAI.getGenerativeModel({
+				model: this.config.model,
+				systemInstruction: `你是一位國際頂尖的化妝品配方師與成分分析專家。
+你的任務是：將使用者提供的一段成分文字，整理並提取出所有成分。
+嚴格規則：
+1. productName：如果使用者有提供產品名稱（會寫在 prompt 中），直接使用它；如果使用者未提供或你覺得能從成分文字中辨識出更正確的，可以使用更正確的。如果都沒有，回傳 null。
+2. ingredients：將所有語言（包含中文、日文、韓文）、俗名或錯別字，強制精確翻譯為標準的「INCI Name (國際化妝品原料命名)」，全英文。
+3. 忽略標點符號、濃度百分比、用途說明等非成分資訊。
+4. 去除重複成分後回傳。
+5. 絕對不可包含任何解釋、問候語、Markdown 標記 (如 \`\`\`json) 或其他廢話。`,
+				generationConfig: {
+					temperature: 0.1,
+					responseMimeType: "application/json",
+					responseSchema: {
+						type: SchemaType.OBJECT,
+						properties: {
+							productName: { type: SchemaType.STRING, nullable: true },
+							ingredients: {
+								type: SchemaType.ARRAY,
+								items: { type: SchemaType.STRING },
+							},
+						},
+						required: ['ingredients'],
+					},
+				},
+			});
+
+			const prompt = `產品名稱：${productName || '未提供'}\n成分文字內容：\n${ingredientsText}`;
+			const result = await model.generateContent(prompt);
+
+			const responseText = result.response.text();
+			const parsed = JSON.parse(responseText);
+			const ingredients: string[] = parsed.ingredients || [];
+			const extractedProductName: string | null = parsed.productName || productName || null;
+
+			if (!Array.isArray(ingredients) || ingredients.length === 0) {
+				throw new Error("AI 無法從文字中辨識出任何有效成分");
+			}
+
+			console.log(`[AIService] 從文字提取成分，共 ${ingredients.length} 個`);
+			return { productName: extractedProductName, ingredients };
+		} catch (error: any) {
+			console.error('[AIService] 文字分析錯誤:', error.message);
+			throw new Error(`文字成分提取失敗: ${error.message}`);
+		}
+	}
+
+	private tryParseIngredients(rawIngredients: string | null): string[] {
     if (!rawIngredients) return [];
     try {
       const parsed = JSON.parse(rawIngredients);

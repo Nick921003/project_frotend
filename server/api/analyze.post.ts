@@ -17,19 +17,19 @@ export default defineEventHandler(async (event) => {
   const aiService = getAIService();
 
   try {
-    const body = await readBody(event);
-    const { imageBase64, imageBase64Array, skinType } = body;
+		const body = await readBody(event);
+		const { imageBase64, imageBase64Array, skinType, productName, ingredientsText } = body;
 
-    // 支援單張（imageBase64）或多張（imageBase64Array）
-    const rawImages: string[] = imageBase64Array
-      ? (Array.isArray(imageBase64Array) ? imageBase64Array : [imageBase64Array])
-      : imageBase64
-        ? [imageBase64]
-        : [];
+		// 支援單張（imageBase64）或多張（imageBase64Array）
+		const rawImages: string[] = imageBase64Array
+			? (Array.isArray(imageBase64Array) ? imageBase64Array : [imageBase64Array])
+			: imageBase64
+				? [imageBase64]
+				: [];
 
-    if (rawImages.length === 0) {
-      throw createError({ statusCode: 400, statusMessage: '缺少必要參數：imageBase64 或 imageBase64Array' });
-    }
+		if (rawImages.length === 0 && !ingredientsText) {
+			throw createError({ statusCode: 400, statusMessage: '缺少必要參數：請提供成分照片，或提供成分文字' });
+		}
 
     // 訪客限速：每 IP 每天 GUEST_DAILY_LIMIT 次
     const user = await serverSupabaseUser(event).catch(() => null);
@@ -69,23 +69,39 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    // 1. 清洗 Base64 (去除可能來自前端的 data:image/jpeg;base64, 前綴)
-    const base64DataArray = rawImages.map(img => img.replace(/^data:image\/\w+;base64,/, ""));
+		let inciArray: string[];
+		let detectedProductName: string | null = null;
 
-    // 2. 使用 AIService 進行圖像分析（支援多張）
-    let inciArray: string[];
-    let detectedProductName: string | null = null;
-    try {
-      console.log(`[Analyze API] 使用 AIService 提取圖像成分，共 ${base64DataArray.length} 張`);
-      const extracted = await aiService.extractIngredientsFromImage(base64DataArray);
-      inciArray = extracted.ingredients;
-      detectedProductName = extracted.productName;
-    } catch (extractError: any) {
-      throw createError({
-        statusCode: 500,
-        statusMessage: 'AI 圖像分析失敗: ' + extractError.message
-      });
-    }
+		if (ingredientsText) {
+			// 若有傳入 ingredientsText，則直接使用文字提取
+			try {
+				console.log(`[Analyze API] 使用 AIService 從文字提取成分`);
+				const extracted = await aiService.extractIngredientsFromText(ingredientsText, productName);
+				inciArray = extracted.ingredients;
+				detectedProductName = extracted.productName || productName || null;
+			} catch (extractError: any) {
+				throw createError({
+					statusCode: 500,
+					statusMessage: 'AI 文字分析失敗: ' + extractError.message
+				});
+			}
+		} else {
+			// 1. 清洗 Base64 (去除可能來自前端的 data:image/jpeg;base64, 前綴)
+			const base64DataArray = rawImages.map(img => img.replace(/^data:image\/\w+;base64,/, ""));
+
+			// 2. 使用 AIService 進行圖像分析（支援多張）
+			try {
+				console.log(`[Analyze API] 使用 AIService 提取圖像成分，共 ${base64DataArray.length} 張`);
+				const extracted = await aiService.extractIngredientsFromImage(base64DataArray);
+				inciArray = extracted.ingredients;
+				detectedProductName = extracted.productName;
+			} catch (extractError: any) {
+				throw createError({
+					statusCode: 500,
+					statusMessage: 'AI 圖像分析失敗: ' + extractError.message
+				});
+			}
+		}
 
     // 5. 查詢 Supabase official_ingredients 進行比對（含功效欄位）
     const { data: matchedIngredients, error: dbError } = await supabase
@@ -255,23 +271,24 @@ export default defineEventHandler(async (event) => {
       notIdealFor: Array.from(notIdealSet)
     };
 
-    // 9. 最終資料重組與回傳
-    return {
-      status: 'success',
-      message: '雙引擎分析完成',
-      data: {
-        rawAiOutput: inciArray,
-        detectedProductName,
-        analysis: {
-          regulatoryAlerts,
-          limitAlerts,
-          skinTypeAlerts,
-          safeList: safeOrUnknownIngredients,
-          efficacySummary
-        },
-        overallSummary: aiOverview
-      }
-    };
+		// 9. 最終資料重組與回傳
+		return {
+			status: 'success',
+			message: '雙引擎分析完成',
+			data: {
+				rawAiOutput: inciArray,
+				rawIngredients: JSON.stringify(inciArray),
+				detectedProductName,
+				analysis: {
+					regulatoryAlerts,
+					limitAlerts,
+					skinTypeAlerts,
+					safeList: safeOrUnknownIngredients,
+					efficacySummary
+				},
+				overallSummary: aiOverview
+			}
+		};
 
   } catch (error: any) {
     console.error('[Analyze API Error]:', error);

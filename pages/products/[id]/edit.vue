@@ -1,218 +1,241 @@
 <template>
-  <div class="page-container">
-    <h1 class="page-heading">編輯保養品</h1>
+	<div class="page-container" style="max-width: 1200px;">
+		<h1 class="page-heading">編輯保養品</h1>
 
-    <div v-if="loading" class="status-box status-loading">⏳ 載入產品資訊中...</div>
-    <div v-if="error" class="status-box status-error">❌ {{ error }}</div>
+		<div v-if="loading" class="status-box status-loading">載入產品資訊中...</div>
+		<div v-if="error" class="status-box status-error">{{ error }}</div>
 
-    <form v-if="!loading && product" @submit.prevent="saveProduct">
-      <div class="card">
-        <div class="form-group">
-          <label class="form-label" for="product_name">產品名稱</label>
-          <input
-            id="product_name"
-            v-model="product.product_name"
-            type="text"
-            class="form-input"
-            placeholder="輸入產品名稱"
-            required
-          />
-        </div>
+		<form v-if="!loading && product" @submit.prevent="saveProduct">
+			<div class="edit-grid">
+				<!-- 左欄：基本品名、成分與 AI 分析結果 -->
+				<div class="edit-col-left">
+					<!-- 產品名稱與成分 -->
+					<div class="card">
+						<h2 class="section-title">基本與成分資訊</h2>
+						
+						<div class="form-group">
+							<label class="form-label" for="product_name">產品名稱</label>
+							<input
+								id="product_name"
+								v-model="product.product_name"
+								type="text"
+								class="form-input"
+								placeholder="輸入產品名稱"
+								required
+							/>
+						</div>
 
-        <div class="form-group" style="margin-bottom: 0;">
-          <label class="form-label" for="product_category">分類</label>
-          <select id="product_category" v-model="product.product_category" class="form-input" required>
-            <option value="">請選擇分類</option>
-            <option v-for="cat in categoryOptions" :key="cat" :value="cat">{{ cat }}</option>
-          </select>
-        </div>
-      </div>
+						<div class="form-group" style="margin-bottom: 0;">
+							<label class="form-label" for="raw_ingredients">成分表文字</label>
+							<textarea
+								id="raw_ingredients"
+								v-model="rawIngredientsText"
+								class="form-input form-textarea"
+								placeholder="請輸入成分，以逗號或換行分隔（例如：水, 甘油, 丁二醇）"
+								rows="8"
+							/>
+						</div>
 
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" :disabled="isSaving">
-          {{ isSaving ? '儲存中...' : '儲存變更' }}
-        </button>
-        <button type="button" class="btn btn-secondary" @click="goBack">
-          取消
-        </button>
-        <button type="button" class="btn btn-danger" @click="deleteProduct">
-          刪除產品
-        </button>
-      </div>
-    </form>
+						<div class="form-group" style="margin-bottom: 0; border-top: 1px dashed var(--color-border); padding-top: var(--space-4); margin-top: var(--space-4);">
+							<label class="form-label">AI 重新分析</label>
+							<p class="hint-text">如果分析不完整或成分有誤，您可在此編輯文字後分析，或重新上傳照片。</p>
+							
+							<div class="form-actions" style="margin: var(--space-3) 0 0; gap: var(--space-2);">
+								<label class="btn btn-secondary btn-sm" :class="{ 'disabled': isAnalyzing }">
+									選擇成分照片
+									<input
+										type="file"
+										accept="image/*"
+										:disabled="isAnalyzing"
+										style="display: none;"
+										@change="handleImageUpload"
+									/>
+								</label>
+								<button
+									class="btn btn-secondary btn-sm"
+									:disabled="isAnalyzing"
+									type="button"
+									@click="analyzeCurrentData"
+								>
+									以目前資料分析
+								</button>
+							</div>
 
-    <!-- 使用追蹤 -->
-    <div v-if="!loading && product" class="card tracking-card">
-      <h2 class="section-title">使用追蹤</h2>
+							<!-- 選擇照片後顯示預覽及分析按鈕 -->
+							<div v-if="selectedImageBase64" class="preview-box">
+								<p class="hint-text" style="margin-bottom: var(--space-2);">已載入照片，請確認後開始進行 AI 分析</p>
+								<img :src="selectedImageBase64" alt="成分預覽" class="preview-thumbnail" />
+								<div class="form-actions" style="margin-top: var(--space-3); margin-bottom: 0;">
+									<button
+										type="button"
+										class="btn btn-primary btn-sm"
+										:disabled="isAnalyzing"
+										@click="analyzeAndSave"
+									>
+										{{ isAnalyzing ? 'AI 分析中...' : '開始分析成分照片' }}
+									</button>
+									<button
+										type="button"
+										class="btn btn-secondary btn-sm"
+										:disabled="isAnalyzing"
+										@click="selectedImageBase64 = ''"
+									>
+										取消
+									</button>
+								</div>
+							</div>
 
-      <div class="form-group">
-        <label class="form-label" for="opened_at">開封日期</label>
-        <input
-          id="opened_at"
-          v-model="tracking.opened_at"
-          type="date"
-          class="form-input"
-          @change="autoCalcExpiry"
-        />
-      </div>
+							<p v-if="analysisError" class="hint-text" style="color: var(--color-red); margin-top: var(--space-2);">{{ analysisError }}</p>
+							<p v-if="analysisSuccessMsg" class="hint-text" style="color: var(--color-sage); margin-top: var(--space-2);">{{ analysisSuccessMsg }}</p>
+						</div>
+					</div>
 
-      <div class="form-group">
-        <label class="form-label" for="expires_at">預估到期日</label>
-        <p class="hint-text">依類別自動推算（可手動調整）</p>
-        <input
-          id="expires_at"
-          v-model="tracking.expires_at"
-          type="date"
-          class="form-input"
-        />
-      </div>
+					<!-- 產品配方分析報告（替代 AI 分析結果） -->
+					<div v-if="analysisData" class="card analysis-report-card" style="margin-top: var(--space-5);">
+						<div class="report-header">
+							<h2 class="report-title">配方分析與法規檢驗報告</h2>
+							<p class="report-subtitle">根據成分表與衛生福利部食品藥物管理署（TFDA）化粧品法規進行科學分析</p>
+						</div>
 
-      <div class="form-group">
-        <label class="form-label" for="estimated_finish_days">預估使用天數</label>
-        <input
-          id="estimated_finish_days"
-          v-model.number="tracking.estimated_finish_days"
-          type="number"
-          min="1"
-          class="form-input"
-          placeholder="例如：60"
-        />
-        <p v-if="estimatedFinishDate" class="hint-text">預計用完日：{{ estimatedFinishDate }}</p>
-      </div>
+						<!-- 配方總評 -->
+						<div v-if="product.overview" class="report-section overview-section">
+							<h3 class="section-subtitle-small">配方整體評價</h3>
+							<p class="overview-text">{{ product.overview }}</p>
+						</div>
 
-      <div class="form-group">
-        <label class="form-label" for="purchase_purpose">購買目的</label>
-        <textarea
-          id="purchase_purpose"
-          v-model="tracking.purchase_purpose"
-          class="form-input form-textarea"
-          placeholder="當初買來解決什麼問題？"
-          rows="2"
-        />
-      </div>
+						<!-- 限制與警告成分 -->
+						<div v-if="analysisData.regulatoryAlerts?.length > 0 || analysisData.limitAlerts?.length > 0" class="report-section alert-section">
+							<h3 class="section-subtitle-small">法規與限量標記成分</h3>
+							<div class="report-list-container">
+								<div v-for="item in analysisData.regulatoryAlerts" :key="item.inci_name" class="report-item item-critical">
+									<div class="item-meta">
+										<span class="report-badge badge-critical">禁用或警告成分</span>
+										<strong class="item-name">{{ item.inci_name }}</strong>
+										<span v-if="item.source === 'TFDA'" class="report-badge badge-tfda">TFDA</span>
+									</div>
+									<p class="item-desc">{{ item.warning }} <span v-if="item.limit" class="item-limit">（法規限量：{{ item.limit }}）</span></p>
+								</div>
 
-      <div class="form-group" style="margin-bottom: 0;">
-        <label class="form-label" for="user_notes">使用筆記</label>
-        <textarea
-          id="user_notes"
-          v-model="tracking.user_notes"
-          class="form-input form-textarea"
-          placeholder="使用心得、注意事項..."
-          rows="3"
-        />
-      </div>
+								<div v-for="item in analysisData.limitAlerts" :key="item.inci_name" class="report-item item-warning">
+									<div class="item-meta">
+										<span class="report-badge badge-warning">限用成分（濃度未知，無法確認是否超標）</span>
+										<strong class="item-name">{{ item.inci_name }}</strong>
+										<span v-if="item.source === 'TFDA'" class="report-badge badge-tfda">TFDA</span>
+									</div>
+									<p class="item-desc">本成分有限量規定但濃度未知，無法確認是否超標。<span v-if="item.limit" class="item-limit">（法規限量：{{ item.limit }}）</span></p>
+								</div>
+							</div>
+						</div>
 
-      <div class="form-actions" style="margin-top: var(--space-4); margin-bottom: 0;">
-        <button type="button" class="btn btn-primary" :disabled="isSavingTracking" @click="saveTracking">
-          {{ isSavingTracking ? '儲存中...' : '儲存追蹤資料' }}
-        </button>
-      </div>
+						<!-- 膚質適配提醒 -->
+						<div v-if="analysisData.skinTypeAlerts?.length > 0" class="report-section skin-section">
+							<h3 class="section-subtitle-small">膚質特異性提醒</h3>
+							<div class="report-list-container">
+								<div v-for="item in analysisData.skinTypeAlerts" :key="item.inci_name" class="report-item item-info">
+									<div class="item-meta">
+										<span class="report-badge badge-info">膚質注意</span>
+										<strong class="item-name">{{ item.inci_name }}</strong>
+									</div>
+									<p class="item-desc">{{ item.risk_description }}</p>
+								</div>
+							</div>
+						</div>
 
-      <p v-if="trackingSaveMsg" class="hint-text" style="margin-top: var(--space-2);">{{ trackingSaveMsg }}</p>
-    </div>
 
-		<!-- AI 成分分析 -->
-		<div v-if="!loading && product" class="card tracking-card">
-			<h2 class="section-title">AI 成分分析</h2>
-			<p class="hint-text">如果分析不完整或成分辨識有誤，您可以在此處重新拍照或上傳成分照片進行 AI 重新分析。</p>
-			
-			<div class="form-group" style="margin-top: var(--space-4);">
-				<div class="form-actions" style="margin: 0 0 var(--space-3); gap: var(--space-2);">
-					<label class="btn btn-secondary btn-sm" :class="{ 'disabled': isAnalyzing }">
-						選擇成分照片
-						<input
-							type="file"
-							accept="image/*"
-							:disabled="isAnalyzing"
-							style="display: none;"
-							@change="handleImageUpload"
-						/>
-					</label>
-					<button
-						class="btn btn-secondary btn-sm"
-						:disabled="isAnalyzing"
-						type="button"
-						@click="useSampleImage"
-					>
-						範例圖片
-					</button>
-				</div>
-
-				<!-- 選擇照片後顯示預覽及分析按鈕 -->
-				<div v-if="selectedImageBase64" class="preview-box">
-					<p class="hint-text" style="margin-bottom: var(--space-2);">已載入照片，請確認後開始進行 AI 分析</p>
-					<img :src="selectedImageBase64" alt="成分預覽" class="preview-thumbnail" />
-					<div class="form-actions" style="margin-top: var(--space-3); margin-bottom: 0;">
-						<button
-							type="button"
-							class="btn btn-primary"
-							:disabled="isAnalyzing"
-							@click="analyzeAndSave"
-						>
-							{{ isAnalyzing ? 'AI 分析中...' : '開始分析成分' }}
-						</button>
-						<button
-							type="button"
-							class="btn btn-secondary"
-							:disabled="isAnalyzing"
-							@click="selectedImageBase64 = ''"
-						>
-							取消
-						</button>
 					</div>
 				</div>
 
-				<p v-if="analysisError" class="hint-text" style="color: var(--color-red); margin-top: var(--space-2);">{{ analysisError }}</p>
-				<p v-if="analysisSuccessMsg" class="hint-text" style="color: var(--color-sage); margin-top: var(--space-2);">{{ analysisSuccessMsg }}</p>
-			</div>
-		</div>
+				<!-- 右欄：類別、使用追蹤與操作按鈕 -->
+				<div class="edit-col-right">
+					<!-- 產品分類與使用追蹤 -->
+					<div class="card">
+						<h2 class="section-title">使用追蹤</h2>
 
-		<!-- AI 分析結果（唯讀） -->
-		<div v-if="product?.analysis_result?.data?.analysis" class="card analysis-card">
-			<h2 class="section-title" style="font-size: 18px; border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-4);">AI 分析結果</h2>
+						<div class="form-group">
+							<label class="form-label" for="product_category">分類</label>
+							<select id="product_category" v-model="product.product_category" class="form-input" required @change="autoCalcExpiry">
+								<option value="">請選擇分類</option>
+								<option v-for="cat in categoryOptions" :key="cat" :value="cat">{{ cat }}</option>
+							</select>
+						</div>
 
-			<div v-if="product.overview" class="alert-block alert-gold">
-				<h4>— AI 配方師總評</h4>
-				<p style="margin: 0;">{{ product.overview }}</p>
-			</div>
+						<div class="form-group">
+							<label class="form-label" for="opened_at">開封日期</label>
+							<input
+								id="opened_at"
+								v-model="tracking.opened_at"
+								type="date"
+								class="form-input"
+								@change="autoCalcExpiry"
+							/>
+						</div>
 
-			<div v-if="product.analysis_result.data.analysis.regulatoryAlerts?.length > 0" class="alert-block alert-red">
-				<h4>法規警告成分</h4>
-				<ul>
-					<li v-for="item in product.analysis_result.data.analysis.regulatoryAlerts" :key="item.inci_name">
-						<strong>{{ item.inci_name }}</strong>
-						<span v-if="item.source === 'TFDA'" class="badge badge-red" style="margin: 0 var(--space-2); font-size: 11px;">TFDA</span>
-						{{ item.warning }}
-						<span v-if="item.limit" style="color: var(--color-text-muted);">（限量：{{ item.limit }}）</span>
-					</li>
-				</ul>
-			</div>
+						<div class="form-group">
+							<label class="form-label" for="expires_at">預估到期日</label>
+							<p class="hint-text">依類別自動推算（可手動調整）</p>
+							<input
+								id="expires_at"
+								v-model="tracking.expires_at"
+								type="date"
+								class="form-input"
+							/>
+						</div>
 
-			<div v-if="product.analysis_result.data.analysis.limitAlerts?.length > 0" class="alert-block alert-orange">
-				<h4>含限量成分（濃度未知）</h4>
-				<ul>
-					<li v-for="item in product.analysis_result.data.analysis.limitAlerts" :key="item.inci_name">
-						<strong>{{ item.inci_name }}</strong>
-						<span v-if="item.source === 'TFDA'" class="badge badge-amber" style="margin: 0 var(--space-2); font-size: 11px;">TFDA</span>
-						<span v-if="item.limit" style="color: var(--color-text-muted);">法規限量：{{ item.limit }}</span>
-					</li>
-				</ul>
-			</div>
+						<div class="form-group">
+							<label class="form-label" for="estimated_finish_days">預估使用天數</label>
+							<input
+								id="estimated_finish_days"
+								v-model.number="tracking.estimated_finish_days"
+								type="number"
+								min="1"
+								class="form-input"
+								placeholder="例如：60"
+							/>
+							<p v-if="estimatedFinishDate" class="hint-text">預計用完日：{{ estimatedFinishDate }}</p>
+						</div>
 
-			<div v-if="product.analysis_result.data.analysis.skinTypeAlerts?.length > 0" class="alert-block alert-yellow">
-				<h4>膚質注意成分</h4>
-				<ul>
-					<li v-for="item in product.analysis_result.data.analysis.skinTypeAlerts" :key="item.inci_name">
-						<strong>{{ item.inci_name }}</strong> {{ item.risk_description }}
-					</li>
-				</ul>
-			</div>
+						<div class="form-group">
+							<label class="form-label" for="purchase_purpose">購買目的</label>
+							<textarea
+								id="purchase_purpose"
+								v-model="tracking.purchase_purpose"
+								class="form-input form-textarea"
+								placeholder="當初買來解決什麼問題？"
+								rows="2"
+							/>
+						</div>
 
-			<div v-if="product.analysis_result.data.analysis.safeList?.length > 0" class="alert-block alert-green" style="margin-bottom: 0;">
-				<h4>其他成分（無法規標記）</h4>
-				<p class="safe-list">{{ product.analysis_result.data.analysis.safeList.map((i: any) => typeof i === 'string' ? i : i.inci_name).join('、') }}</p>
+						<div class="form-group" style="margin-bottom: 0;">
+							<label class="form-label" for="user_notes">使用筆記</label>
+							<textarea
+								id="user_notes"
+								v-model="tracking.user_notes"
+								class="form-input form-textarea"
+								placeholder="使用心得、注意事項..."
+								rows="3"
+							/>
+						</div>
+					</div>
+
+					<!-- 操作動作 -->
+					<div class="card" style="margin-top: var(--space-5);">
+						<div class="form-actions" style="margin: 0; gap: var(--space-3); flex-direction: column;">
+							<button type="submit" class="btn btn-primary" style="width: 100%;" :disabled="isSaving">
+								{{ isSaving ? '儲存中...' : '儲存變更' }}
+							</button>
+							<div style="display: flex; gap: var(--space-3); width: 100%;">
+								<button type="button" class="btn btn-secondary" style="flex: 1;" @click="goBack">
+									取消
+								</button>
+								<button type="button" class="btn btn-danger" style="flex: 1;" @click="deleteProduct">
+									刪除產品
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
 			</div>
-		</div>
+		</form>
 	</div>
 </template>
 
@@ -227,9 +250,7 @@ const route = useRoute()
 const product = ref<Partial<CabinetProduct> | null>(null)
 const loading = ref(true)
 const isSaving = ref(false)
-const isSavingTracking = ref(false)
 const error = ref<string | null>(null)
-const trackingSaveMsg = ref('')
 const categoryOptions = PRODUCT_CATEGORIES
 
 const productId = route.params.id as string
@@ -239,6 +260,21 @@ const selectedImageBase64 = ref('')
 const isAnalyzing = ref(false)
 const analysisError = ref('')
 const analysisSuccessMsg = ref('')
+const rawIngredientsText = ref('')
+
+const analysisData = computed(() => {
+	if (!product.value || !product.value.analysis_result) return null
+	const res = product.value.analysis_result
+	// 1. 如果 res 含有 analysis
+	if (res.analysis) return res.analysis
+	// 2. 如果 res.data 含有 analysis
+	if (res.data?.analysis) return res.data.analysis
+	// 3. 如果 res 本身就平鋪了 alerts (比如 res.regulatoryAlerts 存在)
+	if (res.regulatoryAlerts || res.limitAlerts) return res
+	// 4. 如果 res.data 本身平鋪了 alerts (比如 res.data.regulatoryAlerts 存在)
+	if (res.data?.regulatoryAlerts || res.data?.limitAlerts) return res.data
+	return null
+})
 
 const tracking = reactive({
   opened_at: '' as string,
@@ -271,116 +307,120 @@ const estimatedFinishDate = computed(() => {
   return d.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })
 })
 
+const parseIngredientsToText = (raw: any): string => {
+	if (!raw) return '';
+	if (typeof raw === 'string') {
+		try {
+			const parsed = JSON.parse(raw);
+			if (Array.isArray(parsed)) {
+				return parsed.join(', ');
+			}
+			return raw;
+		} catch {
+			return raw;
+		}
+	}
+	if (Array.isArray(raw)) {
+		return raw.join(', ');
+	}
+	return String(raw);
+};
+
 const fetchProduct = async () => {
-  loading.value = true
-  error.value = null
-  try {
-    const response = await $fetch<{ success: boolean; data: CabinetProduct }>(`/api/cabinet/${productId}`)
-    if (response.success) {
-      product.value = {
-        ...response.data,
-        product_category: normalizeProductCategory(response.data.product_category)
-      }
-      // 初始化追蹤欄位
-      tracking.opened_at = response.data.opened_at
-        ? String(response.data.opened_at).slice(0, 10)
-        : ''
-      tracking.expires_at = response.data.expires_at
-        ? String(response.data.expires_at).slice(0, 10)
-        : ''
-      tracking.estimated_finish_days = response.data.estimated_finish_days ?? null
-      tracking.purchase_purpose = response.data.purchase_purpose ?? ''
-      tracking.user_notes = response.data.user_notes ?? ''
-    } else {
-      error.value = '無法載入產品資訊'
-    }
-  } catch (err: any) {
-    console.error('Fetch product error:', err)
-    error.value = err.data?.message || '載入產品失敗'
-  } finally {
-    loading.value = false
-  }
+	loading.value = true
+	error.value = null
+	try {
+		const response = await $fetch<{ success: boolean; data: CabinetProduct }>(`/api/cabinet/${productId}`)
+		if (response.success) {
+			product.value = {
+				...response.data,
+				product_category: normalizeProductCategory(response.data.product_category)
+			}
+			rawIngredientsText.value = parseIngredientsToText(response.data.raw_ingredients)
+			// 初始化追蹤欄位
+			tracking.opened_at = response.data.opened_at
+				? String(response.data.opened_at).slice(0, 10)
+				: ''
+			tracking.expires_at = response.data.expires_at
+				? String(response.data.expires_at).slice(0, 10)
+				: ''
+			tracking.estimated_finish_days = response.data.estimated_finish_days ?? null
+			tracking.purchase_purpose = response.data.purchase_purpose ?? ''
+			tracking.user_notes = response.data.user_notes ?? ''
+		} else {
+			error.value = '無法載入產品資訊'
+		}
+	} catch (err: any) {
+		console.error('Fetch product error:', err)
+		error.value = err.data?.message || '載入產品失敗'
+	} finally {
+		loading.value = false
+	}
 }
 
 const saveProduct = async () => {
-  if (!product.value || !productId) return
+	if (!product.value || !productId) return
 
-  isSaving.value = true
-  error.value = null
+	isSaving.value = true
+	error.value = null
 
-  try {
-    const response = await $fetch<{ success: boolean; message?: string }>(`/api/cabinet/${productId}`, {
-      method: 'PUT',
-      body: {
-        product_name: product.value.product_name,
-        product_category: normalizeProductCategory(product.value.product_category)
-      }
-    })
+	// 將逗號或換行分隔的成分文字整理成陣列的 JSON 字串
+	const cleanIngredients = rawIngredientsText.value
+		.split(/[,\n、;，；\s]+/)
+		.map(s => s.trim())
+		.filter(Boolean);
 
-    if (response.success) {
-      alert('產品已更新')
-      router.push('/beauty-plan')
-    } else {
-      error.value = response.message || '保存失敗'
-    }
-  } catch (err: any) {
-    console.error('Save product error:', err)
-    error.value = err.data?.message || '保存失敗'
-  } finally {
-    isSaving.value = false
-  }
+	try {
+		const response = await $fetch<{ success: boolean; message?: string }>(`/api/cabinet/${productId}`, {
+			method: 'PUT',
+			body: {
+				product_name: product.value.product_name,
+				product_category: normalizeProductCategory(product.value.product_category),
+				raw_ingredients: JSON.stringify(cleanIngredients),
+				opened_at: tracking.opened_at || null,
+				expires_at: tracking.expires_at || null,
+				estimated_finish_days: tracking.estimated_finish_days,
+				purchase_purpose: tracking.purchase_purpose || null,
+				user_notes: tracking.user_notes || null
+			}
+		})
+
+		if (response.success) {
+			alert('產品與追蹤資料已更新')
+			router.push('/beauty-plan')
+		} else {
+			error.value = response.message || '保存失敗'
+		}
+	} catch (err: any) {
+		console.error('Save product error:', err)
+		error.value = err.data?.message || '保存失敗'
+	} finally {
+		isSaving.value = false
+	}
 }
 
 const deleteProduct = async () => {
-  if (!productId) return
+	if (!productId) return
 
-  const confirmed = confirm('確定要刪除此產品嗎？此操作無法撤銷。')
-  if (!confirmed) return
+	const confirmed = confirm('確定要刪除此產品嗎？此操作無法撤銷。')
+	if (!confirmed) return
 
-  isSaving.value = true
-  error.value = null
+	isSaving.value = true
+	error.value = null
 
-  try {
-    await $fetch(`/api/cabinet/${productId}`, {
-      method: 'DELETE'
-    })
+	try {
+		await $fetch(`/api/cabinet/${productId}`, {
+			method: 'DELETE'
+		})
 
-    alert('產品已刪除')
-    router.push('/beauty-plan')
-  } catch (err: any) {
-    console.error('Delete product error:', err)
-    error.value = err.data?.message || '刪除失敗'
-  } finally {
-    isSaving.value = false
-  }
-}
-
-const saveTracking = async () => {
-  if (!productId) return
-
-  isSavingTracking.value = true
-  trackingSaveMsg.value = ''
-  error.value = null
-
-  try {
-    await $fetch(`/api/cabinet/${productId}`, {
-      method: 'PUT',
-      body: {
-        opened_at: tracking.opened_at || null,
-        expires_at: tracking.expires_at || null,
-        estimated_finish_days: tracking.estimated_finish_days,
-        purchase_purpose: tracking.purchase_purpose || null,
-        user_notes: tracking.user_notes || null
-      }
-    })
-    trackingSaveMsg.value = '追蹤資料已儲存'
-    setTimeout(() => { trackingSaveMsg.value = '' }, 3000)
-  } catch (err: any) {
-    console.error('Save tracking error:', err)
-    error.value = err.data?.message || '儲存追蹤資料失敗'
-  } finally {
-    isSavingTracking.value = false
-  }
+		alert('產品已刪除')
+		router.push('/beauty-plan')
+	} catch (err: any) {
+		console.error('Delete product error:', err)
+		error.value = err.data?.message || '刪除失敗'
+	} finally {
+		isSaving.value = false
+	}
 }
 
 // 處理選擇照片並轉為 base64 供預覽
@@ -396,21 +436,54 @@ const handleImageUpload = (event: Event) => {
 	reader.readAsDataURL(file)
 }
 
-// 讀取 public 下的範例圖片進行無感載入
-const useSampleImage = async () => {
+// 以目前的產品名稱和成分來進行 AI 分析
+const analyzeCurrentData = async () => {
+	if (isAnalyzing.value) return
+	if (!product.value?.product_name || !rawIngredientsText.value) {
+		analysisError.value = '請填寫產品名稱與成分表文字再進行分析'
+		return
+	}
+
 	isAnalyzing.value = true
 	analysisError.value = ''
+	analysisSuccessMsg.value = ''
+
 	try {
-		const res = await fetch('/sample-ingredients.jpg')
-		const blob = await res.blob()
-		const reader = new FileReader()
-		reader.onloadend = () => {
-			selectedImageBase64.value = reader.result as string
-			isAnalyzing.value = false
+		// 1. 呼叫 Gemini 分析 API
+		const res = await $fetch<any>('/api/analyze', {
+			method: 'POST',
+			body: {
+				productName: product.value.product_name,
+				ingredientsText: rawIngredientsText.value,
+				skinType: 'normal'
+			}
+		})
+
+		if (!res || !res.data?.analysis) {
+			throw new Error('AI 分析失敗，請檢查成分文字是否包含有效成分')
 		}
-		reader.readAsDataURL(blob)
+
+		// 2. 將分析所得的數據寫回 user_cabinet 產品欄位中
+		const updateRes = await $fetch<any>(`/api/cabinet/${productId}`, {
+			method: 'PUT',
+			body: {
+				analysis_result: res.data || res,
+				overview: res.data.overallSummary || '',
+				raw_ingredients: res.data.rawIngredients || ''
+			}
+		})
+
+		if (updateRes.success) {
+			analysisSuccessMsg.value = 'AI 分析與保存成功！'
+			// 3. 刷新資料以重新繪製最新的唯讀結果
+			await fetchProduct()
+			setTimeout(() => { analysisSuccessMsg.value = '' }, 3000)
+		} else {
+			throw new Error(updateRes.message || '更新保養品分析失敗')
+		}
 	} catch (err: any) {
-		analysisError.value = '載入範例圖片失敗: ' + err.message
+		analysisError.value = err.message || 'AI 分析發生錯誤'
+	} finally {
 		isAnalyzing.value = false
 	}
 }
@@ -440,7 +513,7 @@ const analyzeAndSave = async () => {
 		const updateRes = await $fetch<any>(`/api/cabinet/${productId}`, {
 			method: 'PUT',
 			body: {
-				analysis_result: res,
+				analysis_result: res.data || res,
 				overview: res.data.overallSummary || '',
 				raw_ingredients: res.data.rawIngredients || ''
 			}
@@ -477,6 +550,20 @@ onMounted(() => {
   margin-bottom: var(--space-6);
 }
 
+.edit-grid {
+	display: grid;
+	grid-template-columns: 1.2fr 1fr;
+	gap: var(--space-6);
+	align-items: start;
+}
+
+@media (max-width: 768px) {
+	.edit-grid {
+		grid-template-columns: 1fr;
+		gap: var(--space-4);
+	}
+}
+
 .form-actions {
   display: flex;
   gap: var(--space-3);
@@ -504,15 +591,144 @@ onMounted(() => {
   margin: var(--space-1) 0 0;
 }
 
-.analysis-card {
-  margin-top: var(--space-5);
+/* 檢驗報告卡片樣式 */
+.analysis-report-card {
+	border: 1px solid var(--color-border);
+	background: #FDFDFD;
+	padding: var(--space-5);
 }
 
-.safe-list {
-  margin: 0;
-  font-size: 14px;
-  color: var(--color-text-secondary);
-  line-height: 1.7;
+.report-header {
+	border-bottom: 2px solid var(--color-text-secondary);
+	padding-bottom: var(--space-4);
+	margin-bottom: var(--space-5);
+}
+
+.report-title {
+	font-size: 18px;
+	font-weight: 700;
+	color: var(--color-text-primary);
+	margin: 0 0 var(--space-1);
+}
+
+.report-subtitle {
+	font-size: 12px;
+	color: var(--color-text-muted);
+	margin: 0;
+}
+
+.report-section {
+	margin-bottom: var(--space-5);
+}
+
+.report-section:last-child {
+	margin-bottom: 0;
+}
+
+.section-subtitle-small {
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--color-text-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	margin-bottom: var(--space-3);
+	padding-bottom: var(--space-1);
+	border-bottom: 1px dashed var(--color-border-light);
+}
+
+.overview-section {
+	background: #F8F9FA;
+	padding: var(--space-4);
+	border-radius: var(--radius-md);
+	border: 1px solid #ECECEC;
+}
+
+.overview-text {
+	margin: 0;
+	font-size: 14px;
+	line-height: 1.6;
+	color: var(--color-text-primary);
+}
+
+.report-list-container {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+}
+
+.report-item {
+	padding: var(--space-3);
+	border-radius: var(--radius-sm);
+	background: #FCFCFC;
+	border: 1px solid #F0F0F0;
+}
+
+.item-meta {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	margin-bottom: var(--space-1);
+}
+
+.item-name {
+	font-size: 14px;
+	color: var(--color-text-primary);
+}
+
+.item-desc {
+	margin: 0;
+	font-size: 13px;
+	color: var(--color-text-secondary);
+	line-height: 1.5;
+}
+
+.item-limit {
+	color: var(--color-text-muted);
+	font-size: 12px;
+}
+
+/* Badge 標籤系統 */
+.report-badge {
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 6px;
+	border-radius: var(--radius-sm);
+}
+
+.badge-critical {
+	background: #FAF0F0;
+	color: #A84242;
+	border: 1px solid #F3D9D9;
+}
+
+.badge-warning {
+	background: #FCF5EC;
+	color: #B36B21;
+	border: 1px solid #F7E5D0;
+}
+
+.badge-info {
+	background: #F2F7FA;
+	color: #3B728C;
+	border: 1px solid #D7E7F0;
+}
+
+.badge-tfda {
+	background: #F0F2FD;
+	color: #4C599A;
+	border: 1px solid #D2D9FA;
+	font-weight: 700;
+}
+
+.safe-list-text {
+	margin: 0;
+	font-size: 13px;
+	color: var(--color-text-secondary);
+	line-height: 1.7;
+	background: #FAFAFA;
+	padding: var(--space-3) var(--space-4);
+	border-radius: var(--radius-sm);
+	border: 1px solid #F0F0F0;
 }
 
 /* 重新分析預覽框與縮圖 */

@@ -2,6 +2,11 @@
 	<div class="page-container">
 		<h1 class="page-heading">個人資料中心</h1>
 
+		<!-- 訪客登入提示 Banner -->
+		<div v-if="showGuestBanner" class="guest-banner card mb-4">
+			<p>💡 您已使用臨時訪客帳號登入！建議先於下方設定您的年齡、性別，並點選膚況設定旁的<strong>「重新設定」</strong>來指定您的基礎膚質與日常習慣，以獲得最精準的 AI 個人化地雷提示與排程推薦！</p>
+		</div>
+
 		<!-- 基本資料卡片 -->
 		<div class="card mb-4">
 			<h2 class="section-title" style="font-size: 16px; margin-bottom: var(--space-5);">基本資料</h2>
@@ -139,7 +144,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useUserProfile, SKIN_CONCERNS_OPTIONS, DAILY_HABITS_OPTIONS } from '~/stores/useUserProfile'
 
@@ -148,6 +154,10 @@ type Gender = 'male' | 'female' | 'other' | '';
 const supabase = useSupabaseClient()
 const userProfileStore = useUserProfile()
 const { profile, skinConcernsArray, customSkinConcernsArray, dailyHabitsArray, customDailyHabitsArray } = storeToRefs(userProfileStore)
+
+// 路由與訪客引導 Banner
+const route = useRoute()
+const showGuestBanner = ref(route.query.from === 'guest')
 
 // 密碼修改相關響應式變數
 const newPassword = ref('')
@@ -206,6 +216,7 @@ const handleSubmit = async () => {
 		await userProfileStore.fetchUserProfile()
 		fillFormFromStore()
 		successMessage.value = '資料已成功保存！'
+		showGuestBanner.value = false
 		setTimeout(() => { successMessage.value = '' }, 3000)
 	} catch (error: any) {
 		errorMessage.value = error.data?.statusMessage || error.message || '保存失敗，請重試'
@@ -364,5 +375,14 @@ onMounted(async () => {
 	background: var(--color-surface-alt);
 	color: var(--color-text-secondary);
 	border: 1px dashed var(--color-border);
+}
+
+.guest-banner {
+	background: var(--color-sage-light);
+	border: 1px solid var(--color-sage);
+	border-left: 4px solid var(--color-sage);
+	color: var(--color-text-primary);
+	font-size: 14px;
+	line-height: 1.6;
 }
 </style>

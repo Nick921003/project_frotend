@@ -210,8 +210,8 @@ const handleGuestLogin = async () => {
 		})
 		if (signInError) throw signInError
 
-		alert('已使用獨立訪客帳號一鍵登入！')
-		await navigateTo('/')
+		alert('已使用獨立訪客帳號一鍵登入！請先設定您的基本資料與膚況，以啟用個人化地雷成分警告與排程建議。')
+		await navigateTo('/profile?from=guest')
 	} catch (error) {
 		errorMsg.value = '訪客登入失敗: ' + error.message
 	} finally {

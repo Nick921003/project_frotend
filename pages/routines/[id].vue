@@ -434,6 +434,11 @@ onMounted(async () => {
 
 @media (max-width: 1024px) {
   .main-grid { grid-template-columns: 1fr; }
+  .main-grid > * {
+    max-height: 70vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 }
 
 @media (max-width: 768px) {

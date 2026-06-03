@@ -333,7 +333,7 @@ const getEveningItems = (dayIdx: number) =>
 .item-content { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
 .item-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .index { font-weight: 700; color: #94a3b8; font-size: 11px; width: 15px; }
-.name { color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.name { color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
 
 /* notes 展開 */
 .btn-notes { background: none; border: 1px solid var(--color-border); color: var(--color-text-secondary); border-radius: 4px; cursor: pointer; padding: 1px 6px; font-size: 11px; transition: all 0.15s; flex-shrink: 0; }

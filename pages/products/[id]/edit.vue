@@ -111,53 +111,109 @@
       <p v-if="trackingSaveMsg" class="hint-text" style="margin-top: var(--space-2);">{{ trackingSaveMsg }}</p>
     </div>
 
-    <!-- AI 分析結果（唯讀） -->
-    <div v-if="product?.analysis_result?.analysis" class="card analysis-card">
-      <h2 class="section-title" style="font-size: 18px; border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-4);">AI 分析結果</h2>
+		<!-- AI 成分分析 -->
+		<div v-if="!loading && product" class="card tracking-card">
+			<h2 class="section-title">AI 成分分析</h2>
+			<p class="hint-text">如果分析不完整或成分辨識有誤，您可以在此處重新拍照或上傳成分照片進行 AI 重新分析。</p>
+			
+			<div class="form-group" style="margin-top: var(--space-4);">
+				<div class="form-actions" style="margin: 0 0 var(--space-3); gap: var(--space-2);">
+					<label class="btn btn-secondary btn-sm" :class="{ 'disabled': isAnalyzing }">
+						選擇成分照片
+						<input
+							type="file"
+							accept="image/*"
+							:disabled="isAnalyzing"
+							style="display: none;"
+							@change="handleImageUpload"
+						/>
+					</label>
+					<button
+						class="btn btn-secondary btn-sm"
+						:disabled="isAnalyzing"
+						type="button"
+						@click="useSampleImage"
+					>
+						範例圖片
+					</button>
+				</div>
 
-      <div v-if="product.overview" class="alert-block alert-gold">
-        <h4>— AI 配方師總評</h4>
-        <p style="margin: 0;">{{ product.overview }}</p>
-      </div>
+				<!-- 選擇照片後顯示預覽及分析按鈕 -->
+				<div v-if="selectedImageBase64" class="preview-box">
+					<p class="hint-text" style="margin-bottom: var(--space-2);">已載入照片，請確認後開始進行 AI 分析</p>
+					<img :src="selectedImageBase64" alt="成分預覽" class="preview-thumbnail" />
+					<div class="form-actions" style="margin-top: var(--space-3); margin-bottom: 0;">
+						<button
+							type="button"
+							class="btn btn-primary"
+							:disabled="isAnalyzing"
+							@click="analyzeAndSave"
+						>
+							{{ isAnalyzing ? 'AI 分析中...' : '開始分析成分' }}
+						</button>
+						<button
+							type="button"
+							class="btn btn-secondary"
+							:disabled="isAnalyzing"
+							@click="selectedImageBase64 = ''"
+						>
+							取消
+						</button>
+					</div>
+				</div>
 
-      <div v-if="product.analysis_result.analysis.regulatoryAlerts?.length > 0" class="alert-block alert-red">
-        <h4>🔴 法規警告成分</h4>
-        <ul>
-          <li v-for="item in product.analysis_result.analysis.regulatoryAlerts" :key="item.inci_name">
-            <strong>{{ item.inci_name }}</strong>
-            <span v-if="item.source === 'TFDA'" class="badge badge-red" style="margin: 0 var(--space-2); font-size: 11px;">TFDA</span>
-            {{ item.warning }}
-            <span v-if="item.limit" style="color: var(--color-text-muted);">（限量：{{ item.limit }}）</span>
-          </li>
-        </ul>
-      </div>
+				<p v-if="analysisError" class="hint-text" style="color: var(--color-red); margin-top: var(--space-2);">{{ analysisError }}</p>
+				<p v-if="analysisSuccessMsg" class="hint-text" style="color: var(--color-sage); margin-top: var(--space-2);">{{ analysisSuccessMsg }}</p>
+			</div>
+		</div>
 
-      <div v-if="product.analysis_result.analysis.limitAlerts?.length > 0" class="alert-block alert-orange">
-        <h4>🟠 含限量成分（濃度未知）</h4>
-        <ul>
-          <li v-for="item in product.analysis_result.analysis.limitAlerts" :key="item.inci_name">
-            <strong>{{ item.inci_name }}</strong>
-            <span v-if="item.source === 'TFDA'" class="badge badge-amber" style="margin: 0 var(--space-2); font-size: 11px;">TFDA</span>
-            <span v-if="item.limit" style="color: var(--color-text-muted);">法規限量：{{ item.limit }}</span>
-          </li>
-        </ul>
-      </div>
+		<!-- AI 分析結果（唯讀） -->
+		<div v-if="product?.analysis_result?.data?.analysis" class="card analysis-card">
+			<h2 class="section-title" style="font-size: 18px; border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-4);">AI 分析結果</h2>
 
-      <div v-if="product.analysis_result.analysis.skinTypeAlerts?.length > 0" class="alert-block alert-yellow">
-        <h4>🟡 膚質注意成分</h4>
-        <ul>
-          <li v-for="item in product.analysis_result.analysis.skinTypeAlerts" :key="item.inci_name">
-            <strong>{{ item.inci_name }}</strong> {{ item.risk_description }}
-          </li>
-        </ul>
-      </div>
+			<div v-if="product.overview" class="alert-block alert-gold">
+				<h4>— AI 配方師總評</h4>
+				<p style="margin: 0;">{{ product.overview }}</p>
+			</div>
 
-      <div v-if="product.analysis_result.analysis.safeList?.length > 0" class="alert-block alert-green" style="margin-bottom: 0;">
-        <h4>✅ 其他成分（無法規標記）</h4>
-        <p class="safe-list">{{ product.analysis_result.analysis.safeList.map((i: any) => typeof i === 'string' ? i : i.inci_name).join('、') }}</p>
-      </div>
-    </div>
-  </div>
+			<div v-if="product.analysis_result.data.analysis.regulatoryAlerts?.length > 0" class="alert-block alert-red">
+				<h4>法規警告成分</h4>
+				<ul>
+					<li v-for="item in product.analysis_result.data.analysis.regulatoryAlerts" :key="item.inci_name">
+						<strong>{{ item.inci_name }}</strong>
+						<span v-if="item.source === 'TFDA'" class="badge badge-red" style="margin: 0 var(--space-2); font-size: 11px;">TFDA</span>
+						{{ item.warning }}
+						<span v-if="item.limit" style="color: var(--color-text-muted);">（限量：{{ item.limit }}）</span>
+					</li>
+				</ul>
+			</div>
+
+			<div v-if="product.analysis_result.data.analysis.limitAlerts?.length > 0" class="alert-block alert-orange">
+				<h4>含限量成分（濃度未知）</h4>
+				<ul>
+					<li v-for="item in product.analysis_result.data.analysis.limitAlerts" :key="item.inci_name">
+						<strong>{{ item.inci_name }}</strong>
+						<span v-if="item.source === 'TFDA'" class="badge badge-amber" style="margin: 0 var(--space-2); font-size: 11px;">TFDA</span>
+						<span v-if="item.limit" style="color: var(--color-text-muted);">法規限量：{{ item.limit }}</span>
+					</li>
+				</ul>
+			</div>
+
+			<div v-if="product.analysis_result.data.analysis.skinTypeAlerts?.length > 0" class="alert-block alert-yellow">
+				<h4>膚質注意成分</h4>
+				<ul>
+					<li v-for="item in product.analysis_result.data.analysis.skinTypeAlerts" :key="item.inci_name">
+						<strong>{{ item.inci_name }}</strong> {{ item.risk_description }}
+					</li>
+				</ul>
+			</div>
+
+			<div v-if="product.analysis_result.data.analysis.safeList?.length > 0" class="alert-block alert-green" style="margin-bottom: 0;">
+				<h4>其他成分（無法規標記）</h4>
+				<p class="safe-list">{{ product.analysis_result.data.analysis.safeList.map((i: any) => typeof i === 'string' ? i : i.inci_name).join('、') }}</p>
+			</div>
+		</div>
+	</div>
 </template>
 
 <script setup lang="ts">
@@ -177,6 +233,12 @@ const trackingSaveMsg = ref('')
 const categoryOptions = PRODUCT_CATEGORIES
 
 const productId = route.params.id as string
+
+// 重新分析狀態變數
+const selectedImageBase64 = ref('')
+const isAnalyzing = ref(false)
+const analysisError = ref('')
+const analysisSuccessMsg = ref('')
 
 const tracking = reactive({
   opened_at: '' as string,
@@ -321,12 +383,91 @@ const saveTracking = async () => {
   }
 }
 
+// 處理選擇照片並轉為 base64 供預覽
+const handleImageUpload = (event: Event) => {
+	const target = event.target as HTMLInputElement
+	const file = target.files?.[0]
+	if (!file) return
+
+	const reader = new FileReader()
+	reader.onloadend = () => {
+		selectedImageBase64.value = reader.result as string
+	}
+	reader.readAsDataURL(file)
+}
+
+// 讀取 public 下的範例圖片進行無感載入
+const useSampleImage = async () => {
+	isAnalyzing.value = true
+	analysisError.value = ''
+	try {
+		const res = await fetch('/sample-ingredients.jpg')
+		const blob = await res.blob()
+		const reader = new FileReader()
+		reader.onloadend = () => {
+			selectedImageBase64.value = reader.result as string
+			isAnalyzing.value = false
+		}
+		reader.readAsDataURL(blob)
+	} catch (err: any) {
+		analysisError.value = '載入範例圖片失敗: ' + err.message
+		isAnalyzing.value = false
+	}
+}
+
+// 開始 AI 分析成分，並將結果儲存回此產品櫃記錄中
+const analyzeAndSave = async () => {
+	if (!selectedImageBase64.value) return
+	isAnalyzing.value = true
+	analysisError.value = ''
+	analysisSuccessMsg.value = ''
+
+	try {
+		// 1. 呼叫 Gemini 分析 API
+		const res = await $fetch<any>('/api/analyze', {
+			method: 'POST',
+			body: {
+				imageBase64Array: [selectedImageBase64.value],
+				skinType: 'normal'
+			}
+		})
+
+		if (!res || !res.data?.analysis) {
+			throw new Error('AI 分析失敗，請更換較清晰的成分照片')
+		}
+
+		// 2. 將分析所得的數據寫回 user_cabinet 產品欄位中
+		const updateRes = await $fetch<any>(`/api/cabinet/${productId}`, {
+			method: 'PUT',
+			body: {
+				analysis_result: res,
+				overview: res.data.overallSummary || '',
+				raw_ingredients: res.data.rawIngredients || ''
+			}
+		})
+
+		if (updateRes.success) {
+			analysisSuccessMsg.value = 'AI 重新分析與保存成功！'
+			selectedImageBase64.value = ''
+			// 3. 刷新本機資料以重新繪製最新的唯讀結果
+			await fetchProduct()
+			setTimeout(() => { analysisSuccessMsg.value = '' }, 3000)
+		} else {
+			throw new Error(updateRes.message || '更新保養品分析失敗')
+		}
+	} catch (err: any) {
+		analysisError.value = err.message || 'AI 分析發生錯誤'
+	} finally {
+		isAnalyzing.value = false
+	}
+}
+
 const goBack = () => {
-  router.push('/beauty-plan')
+	router.push('/beauty-plan')
 }
 
 onMounted(() => {
-  fetchProduct()
+	fetchProduct()
 })
 </script>
 
@@ -372,5 +513,22 @@ onMounted(() => {
   font-size: 14px;
   color: var(--color-text-secondary);
   line-height: 1.7;
+}
+
+/* 重新分析預覽框與縮圖 */
+.preview-box {
+	background: var(--color-surface-alt);
+	padding: var(--space-4);
+	border-radius: var(--radius-md);
+	border: 1px dashed var(--color-border);
+	margin-top: var(--space-3);
+}
+
+.preview-thumbnail {
+	max-width: 150px;
+	max-height: 150px;
+	border-radius: var(--radius-md);
+	border: 1px solid var(--color-border);
+	margin-top: var(--space-2);
 }
 </style>

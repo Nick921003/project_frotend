@@ -31,15 +31,19 @@ export default defineEventHandler(async (event) => {
     expires_at,
     estimated_finish_days,
     purchase_purpose,
-    user_notes
+    user_notes,
+    analysis_result,
+    overview,
+    raw_ingredients
   } = body;
 
   // 至少需要一個欄位
   const hasBasicFields = product_name || product_category;
   const hasTrackingFields = opened_at !== undefined || expires_at !== undefined ||
     estimated_finish_days !== undefined || purchase_purpose !== undefined || user_notes !== undefined;
+  const hasAnalysisFields = analysis_result !== undefined || overview !== undefined || raw_ingredients !== undefined;
 
-  if (!hasBasicFields && !hasTrackingFields) {
+  if (!hasBasicFields && !hasTrackingFields && !hasAnalysisFields) {
     throw createError({ statusCode: 400, statusMessage: '請提供至少一個要更新的欄位' });
   }
 
@@ -52,6 +56,9 @@ export default defineEventHandler(async (event) => {
   if (estimated_finish_days !== undefined) updateData.estimated_finish_days = estimated_finish_days;
   if (purchase_purpose !== undefined) updateData.purchase_purpose = purchase_purpose;
   if (user_notes !== undefined) updateData.user_notes = user_notes;
+  if (analysis_result !== undefined) updateData.analysis_result = analysis_result;
+  if (overview !== undefined) updateData.overview = overview;
+  if (raw_ingredients !== undefined) updateData.raw_ingredients = raw_ingredients;
 
   // 4. 取得 Supabase 客戶端
   const supabase = await serverSupabaseClient(event);

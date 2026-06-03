@@ -74,7 +74,7 @@ const filteredAvailableProducts = computed(() => {
 .product-item { padding: 10px; border: 1px solid var(--color-accent); border-radius: 8px; display: flex; align-items: center; gap: 10px; cursor: grab; background: #fff; transition: background 0.15s; user-select: none; }
 .product-item:hover { background: var(--color-accent-light); }
 
-.product-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+.product-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .product-category-tag { background: var(--color-gold-light); color: var(--color-gold); border-radius: 12px; padding: 2px 8px; font-size: 11px; flex-shrink: 0; }
 
 .product-item.is-recommendation { border-color: var(--color-amber); background: var(--color-amber-light); }

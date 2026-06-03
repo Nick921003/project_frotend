@@ -2,6 +2,8 @@
 
 以 **AI 成分分析** 為核心，結合個人化膚質判斷與每週保養排程管理的全端應用。上傳產品照片，即時提取成分清單，根據膚質給出專業建議，並生成個人化每週保養規劃。
 
+🔗 **線上展示網站**：[https://project-frotend.vercel.app/](https://project-frotend.vercel.app/)
+
 ## ✨ 核心功能
 
 ### 🤖 AI 成分提取

@@ -135,19 +135,24 @@
             <h3 class="routine-card__title">{{ routine.name }}</h3>
             <div class="routine-card__actions">
               <button
-                :class="['btn-toggle', { 'btn-toggle--active': routine.is_active }]"
-                :title="routine.is_active ? '停用此排程' : '啟用此排程'"
-                @click.stop="toggleRoutineActive(routine.id, routine.is_active)"
+                :class="['btn-toggle', { 'btn-toggle--active': routine._is_active_for_me }]"
+                :title="routine._is_active_for_me ? '停用此排程' : '啟用此排程'"
+                @click.stop="toggleRoutineActive(routine.id, routine._is_active_for_me)"
               >
-                {{ routine.is_active ? '✓ 啟用' : '○ 停用' }}
+                {{ routine._is_active_for_me ? '✓ 啟用' : '○ 停用' }}
               </button>
-              <button class="btn-delete" title="刪除此排程" @click.stop="deleteRoutine(routine.id, routine.name)">
+              <button v-if="!routine._share" class="btn-delete" title="刪除此排程" @click.stop="deleteRoutine(routine.id, routine.name)">
                 刪除
               </button>
             </div>
           </div>
 
           <p class="routine-card__desc">{{ routine.description || '無描述' }}</p>
+
+          <div v-if="routine._share" class="shared-badge">
+            <span>由 {{ routine._share.shared_by_email }} 分享</span>
+            <span class="perm-badge">{{ routine._share.permission === 'edit' ? '可編輯' : '檢視' }}</span>
+          </div>
 
           <div v-if="getRoutineThemeTags(routine).length > 0" class="theme-tags">
             <span
@@ -178,6 +183,8 @@ interface RoutineListItem {
   is_active?: boolean | null
   themes?: string[] | null
   custom_themes?: string[] | null
+  _share?: { permission: 'view' | 'edit'; status: string; shared_by_email: string } | null
+  _is_active_for_me?: boolean | null
 }
 
 const router = useRouter()
@@ -661,5 +668,23 @@ const goNextCabinetPage = async () => {
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
+}
+
+.shared-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.perm-badge {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  font-weight: 600;
+  font-size: 10px;
 }
 </style>

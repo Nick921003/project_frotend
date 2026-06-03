@@ -18,7 +18,7 @@ No test suite or linter configured.
 - **Supabase** — auth (JWT) + PostgreSQL database
 - **Pinia** — state management (`stores/useUserProfile.ts` only)
 - **Tailwind CSS** — via `@nuxtjs/tailwindcss`; used for **new components only**
-- **Google Generative AI** — `gemini-2.5-flash`, server-side only via `server/services/aiService.ts`
+- **Google Generative AI** — `gemini-3.5-flash`, server-side only via `server/services/aiService.ts`
 - **Nitro** — server API routes under `server/api/`
 - **Native HTML5 Drag API** — routine item reordering in `components/routine/`
 

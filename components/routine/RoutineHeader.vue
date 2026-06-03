@@ -5,13 +5,13 @@
       <h1
         class="routine-title"
         :class="{ editing: showMetaEditor }"
-        @click="showMetaEditor = !showMetaEditor"
+        @click="canEdit !== false && (showMetaEditor = !showMetaEditor)"
         :title="showMetaEditor ? '收合' : '點擊編輯名稱'"
       >{{ routine.name || '未命名排程' }}</h1>
       <p v-if="routine.description && !showMetaEditor" class="routine-desc">{{ routine.description }}</p>
     </div>
 
-    <div v-if="routine && showMetaEditor" class="routine-meta-editor">
+    <div v-if="routine && showMetaEditor && canEdit !== false" class="routine-meta-editor">
       <input
         v-model="routineNameDraft"
         class="meta-name-input"
@@ -104,10 +104,11 @@ import { ref, watch } from 'vue';
 import { AVAILABLE_ROUTINE_THEMES } from '~/types/routine';
 import type { WeeklyRoutine } from '~/types/routine';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   routine: WeeklyRoutine | null;
   routineId: string;
-}>();
+  canEdit?: boolean;
+}>(), { canEdit: true });
 
 const emit = defineEmits<{
   (e: 'meta-saved', name: string, description: string): void;

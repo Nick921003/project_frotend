@@ -1,10 +1,13 @@
 import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server';
 import { getAIService } from '~/server/services/aiService';
+import { assertRoutineAccess } from '~/server/utils/routineAccess';
 
 export default defineEventHandler(async (event) => {
 	const user = await serverSupabaseUser(event);
 	if (!user) throw createError({ statusCode: 401, statusMessage: '請先登入' });
 	const userId = (user as any).id || (user as any).sub;
+
+	await assertRoutineAccess(event, getRouterParam(event, 'id'), 'edit');
 
 	const body = await readBody(event);
 	const targetIssues: string[] = Array.isArray(body.targetIssues) ? body.targetIssues : [];

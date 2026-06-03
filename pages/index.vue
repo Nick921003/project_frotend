@@ -42,7 +42,6 @@
 
           <div class="upload-row">
             <label class="btn btn-secondary btn-sm upload-label" :class="{ 'disabled': isLoading }">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
               選擇照片（可多選）
               <input
                 type="file"
@@ -60,6 +59,14 @@
               @click="handleDrivePick"
             >
               從 Google Drive 選取
+            </button>
+            <button
+              class="btn btn-secondary btn-sm"
+              :disabled="isLoading"
+              type="button"
+              @click="useSampleImage"
+            >
+              範例圖片
             </button>
           </div>
 
@@ -385,6 +392,32 @@ const handleDrivePick = () => {
     () => { isUploading.value = false },
     user.value?.email || undefined
   )
+}
+
+// 載入預設成分表範例圖片，供聽眾一鍵體驗 AI 分析
+const useSampleImage = async () => {
+	isLoading.value = true
+	errorMsg.value = ''
+	try {
+		// 抓取複製到 public 的範例圖片
+		const res = await fetch('/sample-ingredients.jpg')
+		const blob = await res.blob()
+		
+		// 將圖片 blob 轉為 base64 送入分析陣列
+		const reader = new FileReader()
+		reader.onloadend = () => {
+			const base64data = reader.result
+			imageBase64Array.value = [base64data]
+			isLoading.value = false
+		}
+		reader.onerror = () => {
+			throw new Error('範例圖片轉換失敗')
+		}
+		reader.readAsDataURL(blob)
+	} catch (err) {
+		errorMsg.value = '無法載入範例圖片: ' + err.message
+		isLoading.value = false
+	}
 }
 
 const removeImage = (idx) => {

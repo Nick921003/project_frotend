@@ -1,4 +1,5 @@
-import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server';
+import { assertRoutineAccess, getServiceClient } from '~/server/utils/routineAccess';
+import { serverSupabaseClient } from '#supabase/server';
 
 /**
  * POST /api/routines/update-themes
@@ -6,22 +7,6 @@ import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server';
  */
 export default defineEventHandler(async (event) => {
   try {
-    const user = await serverSupabaseUser(event);
-    if (!user) {
-      throw createError({
-        statusCode: 401,
-        statusMessage: '需要登錄'
-      });
-    }
-
-    const userId = user.id || user.sub;
-    if (!userId) {
-      throw createError({
-        statusCode: 401,
-        statusMessage: '無法識別用戶身份'
-      });
-    }
-
     const body = await readBody(event);
     const { routine_id, themes = [], custom_themes = [] } = body;
 
@@ -32,33 +17,15 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    const supabase = await serverSupabaseClient(event);
-
-    // 驗證排程屬於當前用戶
-    const { data: routine, error: checkError } = await supabase
-      .from('routines')
-      .select('id')
-      .eq('id', routine_id)
-      .eq('user_id', userId)
-      .single();
-
-    if (checkError || !routine) {
-      throw createError({
-        statusCode: 403,
-        statusMessage: '無權修改此排程'
-      });
-    }
+    const { role } = await assertRoutineAccess(event, routine_id, 'edit');
+    const userClient = await serverSupabaseClient(event);
+    const supabase = role === 'owner' ? userClient : getServiceClient(event);
 
     // 保存主題設定
-    // 注意：確保 routines 表中有 themes 和 custom_themes 字段
-    const { error: updateError } = await supabase
+    const { error: updateError } = await (supabase as any)
       .from('routines')
-      .update({ 
-        themes,
-        custom_themes
-      })
-      .eq('id', routine_id)
-      .eq('user_id', userId);
+      .update({ themes, custom_themes })
+      .eq('id', routine_id);
 
     if (updateError) {
       console.error('[Update Themes Error]:', updateError);

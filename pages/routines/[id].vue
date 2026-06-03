@@ -4,10 +4,26 @@
     <RoutineHeader
       :routine="routine"
       :routine-id="routineId"
+      :can-edit="canEdit"
       @meta-saved="(name, desc) => { if (routine) { routine.name = name; routine.description = desc; } }"
       @themes-saved="(themes, custom) => { if (routine) { routine.themes = themes; routine.custom_themes = custom; } }"
       @message="handleMessage"
     />
+
+    <!-- 分享按鈕（僅擁有者） -->
+    <div v-if="isOwner" class="mb-3 flex justify-end">
+      <button
+        class="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-accent hover:bg-gray-50"
+        @click="showShareModal = true"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+          <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" /><line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
+        </svg>
+        分享
+      </button>
+    </div>
+    <ShareRoutineModal v-if="showShareModal" :routine-id="routineId" @close="showShareModal = false" />
 
     <!-- 載入與錯誤狀態 -->
     <div v-if="pageLoading" class="loading-overlay">
@@ -80,6 +96,7 @@ import { useRoutineDragDrop } from '~/composables/useRoutineDragDrop';
 import { AVAILABLE_ROUTINE_THEMES } from '~/types/routine';
 import type { RoutineItem, CabinetProductItem } from '~/types/routine';
 import { PRODUCT_CATEGORIES } from '~/utils/productCategories';
+import ShareRoutineModal from '~/components/routine/ShareRoutineModal.vue';
 
 // ==================
 // 基礎狀態與路由
@@ -94,6 +111,9 @@ const pageError = ref<string | null>(null);
 const savingOrder = ref(false);
 const saveMessage = ref<string | null>(null);
 const saveSuccess = ref(false);
+const showShareModal = ref(false);
+const canEdit = computed(() => (routine.value as any)?._access?.permission !== 'view');
+const isOwner = computed(() => (routine.value as any)?._access?.role === 'owner');
 
 const daysOfWeek = ['日', '一', '二', '三', '四', '五', '六'];
 const expandedDayIdx = ref(new Date().getDay());
@@ -184,6 +204,7 @@ const toggleItemLock = async (item: RoutineItem) => {
     handleMessage(false, '❌ 請先保存排序再鎖定項目');
     return;
   }
+  if (!canEdit.value) return;
   try {
     const next = !item.is_locked;
     const res = await $fetch<any>(`/api/routines/items/${item.id}/lock`, {
@@ -201,6 +222,7 @@ const toggleItemLock = async (item: RoutineItem) => {
 
 const saveChanges = async () => {
   if (!routine.value) return;
+  if (!canEdit.value) return;
   savingOrder.value = true;
   saveMessage.value = '正在儲存...';
   try {

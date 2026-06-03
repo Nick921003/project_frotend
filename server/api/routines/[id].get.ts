@@ -1,133 +1,95 @@
-import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server';
 import { detectConflicts } from '~/server/utils/ingredientConflicts';
+import { getServiceClient, assertRoutineAccess } from '~/server/utils/routineAccess';
+import { serverSupabaseClient } from '#supabase/server';
 
 /**
  * GET /api/routines/:id
- * 根據 routine ID 獲取完整排程信息
+ * 取得完整排程（含項目、衝突、可選產品）。支援擁有者與共享協作者。
  */
 export default defineEventHandler(async (event) => {
-  // 驗證使用者
-  const user = await serverSupabaseUser(event);
+	const routineId = getRouterParam(event, 'id');
 
-  if (!user) {
-    throw createError({ statusCode: 401, statusMessage: '請先登入' });
-  }
+	// 授權（view）；回傳含 ownerId / permission
+	const access = await assertRoutineAccess(event, routineId, 'view');
+	const { ownerId, userId, role, permission } = access;
 
-  const userId = user.id || user.sub;
+	// 若是 owner，優先使用使用者的帶 cookie/token RLS client；以保證當 Secret Key 填寫錯誤時，擁有者的排程依舊能完整讀取。
+	const userClient = await serverSupabaseClient(event);
+	const admin = role === 'owner' ? userClient : getServiceClient(event);
 
-  if (!userId) {
-    throw createError({ statusCode: 401, statusMessage: '無法識別用戶身份' });
-  }
+	const { data: routineData, error: routineError } = await (admin as any)
+		.from('routines')
+		.select('*')
+		.eq('id', routineId)
+		.single();
+	if (routineError || !routineData) {
+		throw createError({ statusCode: 404, statusMessage: '排程不存在' });
+	}
 
-  // 獲取 routine ID 參數
-  const routineId = getRouterParam(event, 'id');
+	const { data: itemsData, error: itemsError } = await (admin as any)
+		.from('routine_items')
+		.select('*')
+		.eq('routine_id', routineId)
+		.order('day_of_week')
+		.order('time_of_day')
+		.order('sequence_order');
+	if (itemsError) {
+		throw createError({ statusCode: 500, statusMessage: '查詢排程項目失敗: ' + itemsError.message });
+	}
 
-  if (!routineId) {
-    throw createError({ statusCode: 400, statusMessage: '缺少 routine ID' });
-  }
+	// orphan 基準：owner 櫃 ∪ 當前檢視者櫃（檢視者剛從自己櫃加的不被誤標）
+	const cabinetOwnerIds = Array.from(new Set([ownerId, userId]));
+	const { data: productsData } = await (admin as any)
+		.from('user_cabinet')
+		.select('*')
+		.in('user_id', cabinetOwnerIds);
 
-  const supabase = await serverSupabaseClient(event);
+	const existingProductIds = new Set<string>(
+		(productsData || []).map((p: any) => p.id).filter(Boolean)
+	);
+	const itemsWithOrphan = (itemsData || []).map((item: any) => ({
+		...item,
+		is_orphan: item.product_id != null && !existingProductIds.has(item.product_id)
+	}));
 
-  // 查詢該 routine
-  const { data: routineData, error: routineError } = (await (supabase as any)
-    .from('routines')
-    .select('*')
-    .eq('id', routineId)
-    .eq('user_id', userId)
-    .single()) as any;
+	// 成分衝突（優先用 item.ingredients；缺則回查櫃）
+	const productIngredientMap = new Map<string, string>();
+	for (const p of (productsData || [])) {
+		if (p.id && p.raw_ingredients) productIngredientMap.set(p.id, String(p.raw_ingredients).toLowerCase());
+	}
+	const conflictsByDay: Record<number, { rule: string; message: string }[]> = {};
+	for (let day = 0; day < 7; day++) {
+		const dayItems = itemsWithOrphan.filter((i: any) => i.day_of_week === day);
+		const allIngredients = dayItems
+			.map((i: any) => {
+				if (Array.isArray(i.ingredients) && i.ingredients.length > 0) return i.ingredients as string[];
+				if (i.product_id && productIngredientMap.has(i.product_id)) return [productIngredientMap.get(i.product_id)!];
+				return [] as string[];
+			})
+			.filter((arr: string[]) => arr.length > 0);
+		const warnings = detectConflicts(allIngredients);
+		if (warnings.length > 0) conflictsByDay[day] = warnings;
+	}
 
-  if (routineError) {
-    if (routineError.code === 'PGRST116') {
-      throw createError({
-        statusCode: 404,
-        statusMessage: '排程不存在'
-      });
-    }
-    
-    throw createError({
-      statusCode: 500,
-      statusMessage: '查詢排程失敗: ' + routineError.message
-    });
-  }
+	// 「新增產品」挑選清單：用檢視者自己的櫃（只能加自己有的）
+	const viewerProducts = (productsData || []).filter((p: any) => p.user_id === userId);
 
-  // 查詢該 routine 的所有排程項目
-  const { data: itemsData, error: itemsError } = (await (supabase as any)
-    .from('routine_items')
-    .select('*')
-    .eq('routine_id', routineId)
-    .order('day_of_week, time_of_day, sequence_order')) as any;
-
-  if (itemsError) {
-    console.error('[Get Routine - Items Error]:', itemsError);
-    throw createError({
-      statusCode: 500,
-      statusMessage: '查詢排程項目失敗: ' + itemsError.message
-    });
-  }
-
-  // 查詢該用戶的所有產品（作為可用產品列表）
-  const { data: productsData, error: productsError } = (await (supabase as any)
-    .from('user_cabinet')
-    .select('*')
-    .eq('user_id', userId)) as any;
-
-  if (productsError) {
-    console.error('[Get Routine - Products Error]:', productsError);
-    // 不要因為無法取得產品而失敗
-  }
-
-  // 找出哪些 product_id 仍在保養品櫃（用於孤兒標示）
-  const existingProductIds = new Set<string>(
-    (productsData || []).map((p: any) => p.id).filter(Boolean)
-  );
-
-  // 將 is_orphan 旗標附加到 items
-  const itemsWithOrphan = (itemsData || []).map((item: any) => ({
-    ...item,
-    is_orphan: item.product_id != null && !existingProductIds.has(item.product_id)
-  }));
-
-  // 建立 productId → raw_ingredients 快查表，用於衝突偵測
-  const productIngredientMap = new Map<string, string>();
-  for (const p of (productsData || [])) {
-    if (p.id && p.raw_ingredients) {
-      productIngredientMap.set(p.id, String(p.raw_ingredients).toLowerCase());
-    }
-  }
-
-  // 計算各天的成分衝突
-  const conflictsByDay: Record<number, { rule: string; message: string }[]> = {};
-  for (let day = 0; day < 7; day++) {
-    const dayItems = itemsWithOrphan.filter((i: any) => i.day_of_week === day);
-    const allIngredients = dayItems
-      .map((i: any) => {
-        if (Array.isArray(i.ingredients) && i.ingredients.length > 0) return i.ingredients as string[];
-        if (i.product_id && productIngredientMap.has(i.product_id)) {
-          return [productIngredientMap.get(i.product_id)!];
-        }
-        return [] as string[];
-      })
-      .filter((arr: string[]) => arr.length > 0);
-    const warnings = detectConflicts(allIngredients);
-    if (warnings.length > 0) conflictsByDay[day] = warnings;
-  }
-
-  // 組合完整的 routine 對象
-  return {
-    success: true,
-    data: {
-      ...routineData,
-      items: itemsWithOrphan,
-      conflicts_by_day: conflictsByDay,
-      all_products: (productsData || []).map((p: any) => ({
-        id: p.id,
-        product_name: p.product_name,
-        product_category: p.product_category,
-        raw_ingredients: p.raw_ingredients || '',
-        analysis_result: p.analysis_result || null,
-        is_recommendation: false
-      }))
-    },
-    message: '成功取得排程'
-  };
+	return {
+		success: true,
+		data: {
+			...routineData,
+			items: itemsWithOrphan,
+			conflicts_by_day: conflictsByDay,
+			all_products: viewerProducts.map((p: any) => ({
+				id: p.id,
+				product_name: p.product_name,
+				product_category: p.product_category,
+				raw_ingredients: p.raw_ingredients || '',
+				analysis_result: p.analysis_result || null,
+				is_recommendation: p.is_recommendation ?? false
+			})),
+			_access: { role, permission, owner_id: ownerId }
+		},
+		message: '成功取得排程'
+	};
 });

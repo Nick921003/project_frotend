@@ -1,4 +1,5 @@
-import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server';
+import { assertRoutineAccess, getServiceClient } from '~/server/utils/routineAccess';
+import { serverSupabaseClient } from '#supabase/server';
 
 /**
  * PUT /api/routines/[id]/meta
@@ -14,15 +15,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const user = await serverSupabaseUser(event);
-  if (!user) {
-    throw createError({ statusCode: 401, statusMessage: '請先登入' });
-  }
-
-  const userId = user.id || user.sub;
-  if (!userId) {
-    throw createError({ statusCode: 401, statusMessage: '無法識別用戶身份' });
-  }
+  const { role } = await assertRoutineAccess(event, routineId, 'edit');
 
   const body = await readBody(event);
   const name = String(body?.name || '').trim();
@@ -36,7 +29,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: '排程名稱請限制在 60 字內' });
   }
 
-  const supabase = await serverSupabaseClient(event);
+  const userClient = await serverSupabaseClient(event);
+  const supabase = role === 'owner' ? userClient : getServiceClient(event);
 
   const { data, error } = await (supabase as any)
     .from('routines')
@@ -46,7 +40,6 @@ export default defineEventHandler(async (event) => {
       updated_at: new Date().toISOString()
     })
     .eq('id', routineId)
-    .eq('user_id', userId)
     .select('id, name, description')
     .single();
 

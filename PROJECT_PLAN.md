@@ -1,6 +1,6 @@
 # Beauty Analyzer — 專案現況文件
 
-**最後更新**：2026-05-16（今日打卡頁 UI 重設計）
+**最後更新**：2026-06-03（排程分享協作功能上線）
 **技術棧**：Nuxt 4 + Vue 3 + Supabase + Google Gemini 2.5 Flash
 
 > **維護規則**：有功能新增、頁面異動、API 變更、DB migration 時，**必須同步更新此檔**。
@@ -12,7 +12,7 @@
 | 功能模組 | 狀態 | 說明 |
 |---------|------|------|
 | 成分分析引擎 | ✅ | 上傳圖片 → Gemini OCR → 法規 + 膚質雙層分析 |
-| 訪客模式 | ✅ | 未登入可分析，每日上限 3 次（service key 計數） |
+| 訪客模式 | ✅ | 未登入可分析，每日上限 3 次；新增「訪客一鍵體驗登入」免註冊直接以 guest 進入系統 |
 | 保養品庫 | ✅ | 新增 / 查看 / 編輯 / 刪除產品，含搜尋 + 分頁 |
 | PAO 追蹤 | ✅ | 開封日 + 類別自動推算 expires_at，到期警告 |
 | 每週保養規劃 | ✅ | 建立規劃、拖拽排程、鎖定項目 |
@@ -20,9 +20,10 @@
 | 今日保養打卡 | ✅ | `/routines/active` 逐項打卡，每日切換；進度卡 + Timeline 步驟 + 完成 banner |
 | AI 功效推薦 | ✅ | 分析現有庫存功效缺口，給出補充建議 |
 | 個人資料 | ✅ | 膚質、年齡、性別、肌膚問題、suppress_safety_warnings |
-| 用戶認證 | ✅ | Supabase Auth，Email/密碼 + Google OAuth，per-endpoint 401 |
+| 用戶認證 | ✅ | Supabase Auth，自訂帳號（純英文數字）與 Email 雙軌支援，搭配 Google OAuth，提供訪客一鍵體驗登入。 |
 | Google Drive 上傳 | ✅ | Picker 多選圖片（含 HEIC），server 端轉 JPEG 預覽 |
 | 管理後台 | ✅ | `/admin`：統計、系統設定 |
+| 排程分享（即時協作） | ✅ | 搜尋帳號或 email 邀請協作，自動裁切虛擬域名，支援 view/edit 權限 |
 
 ---
 
@@ -62,7 +63,12 @@
 | GET | `/api/routines/active` | 取得當前 active 規劃 |
 | GET | `/api/routines/[id]` | 規劃詳情 |
 | DELETE | `/api/routines/[id]` | 刪除規劃 |
-| PUT | `/api/routines/[id]/toggle-active` | 切換 is_active |
+| PUT | `/api/routines/[id]/toggle-active` | 切換 per-user 啟動排程（寫 user_active_routine） |
+| GET | `/api/routines/share/search-users` | email 前綴搜尋（邀請用） |
+| GET | `/api/routines/[id]/shares` | 查看分享列表（擁有者限定） |
+| POST | `/api/routines/[id]/shares` | 新增分享協作者 |
+| PATCH | `/api/routines/[id]/shares/[shareId]` | 更新分享權限或狀態（暫停/恢復） |
+| DELETE | `/api/routines/[id]/shares/[shareId]` | 移除分享 |
 | PUT | `/api/routines/[id]/meta` | 更新規劃名稱等 meta |
 | GET | `/api/routines/[id]/checkins` | 某日打卡狀態 |
 | POST | `/api/routines/[id]/efficacy-recs` | AI 功效缺口推薦 |
@@ -92,9 +98,11 @@
 | `user_cabinet` | product_name, product_category, raw_ingredients (NOT NULL), analysis_result (JSONB), overview, opened_at, expires_at, estimated_finish_days, purchase_purpose, user_notes |
 | `official_ingredients` | inci_name, warning_text, skin_type_risks (JSONB), efficacy_tags (text[]), function_summary |
 | `cosmetic_regulations` | TFDA 台灣法規 |
-| `routines` | user_id, name, is_active (唯一) |
+| `routines` | user_id, name |
 | `routine_items` | routine_id, product_id, day_of_week, time_of_day, sequence_order, is_locked |
 | `routine_checkins` | routine_item_id, checked_date（unique 組合）、RLS |
+| `routine_shares` | routine_id, user_id, permission (view/edit), status (active/paused); SECURITY DEFINER RPCs for email lookup |
+| `user_active_routine` | user_id (PK), routine_id（每人一列，指向當前 active 排程） |
 
 ---
 
@@ -114,7 +122,6 @@
 ## Backlog（尚未實作）
 
 - 成分使用趨勢分析（哪些成分跨產品重複出現）
-- 規劃 / 排程分享功能
 
 ---
 

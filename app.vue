@@ -67,6 +67,14 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
+useHead({
+  title: 'A.R.C. 保養分析系統',
+  meta: [
+    { name: 'description', content: '智慧保養分析平台，透過 AI 解析成分、建立個人化排程，讓你的保養更有效率。' },
+    { name: 'keywords', content: '保養, 成分分析, 護膚, AI保養, 排程管理' }
+  ]
+})
+
 const showProfileMenu = ref(false)
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()

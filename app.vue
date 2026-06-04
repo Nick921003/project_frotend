@@ -6,6 +6,13 @@
         <NuxtLink to="/" class="nav-brand">A.R.C.</NuxtLink>
 
         <div class="nav-right">
+          <a
+            href="/slides.html"
+            target="_blank"
+            rel="noopener"
+            class="nav-routine-btn"
+          >簡報大綱</a>
+
           <NuxtLink
             v-if="user"
             to="/routines/active"

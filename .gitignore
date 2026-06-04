@@ -132,4 +132,5 @@ coverage/
 # ==========================================
 slides/
 slides.html
+!public/slides.html
 generate_deck.py

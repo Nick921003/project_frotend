@@ -23,9 +23,48 @@
           <p v-if="user" class="hint-text">已自動套用您的會員膚質設定</p>
         </div>
 
-        <!-- 步驟 2：上傳 -->
-        <div class="card step-card upload-card">
-          <label class="form-label step-label">步驟 2 · 上傳成分表照片</label>
+		<!-- 步驟 2：上傳 -->
+		<div
+			class="card step-card upload-card"
+			:class="{ 'drag-active': isDragging }"
+			@dragover="handleDragOver"
+			@dragleave="handleDragLeave"
+			@drop="handleDrop"
+		>
+			<!-- 拖拽提示覆蓋層 -->
+			<div v-if="isDragging" class="drag-overlay">
+				<span class="drag-icon">📥</span>
+				<p class="drag-text">放開以新增圖片</p>
+			</div>
+
+			<!-- 標題欄加入說明驚嘆號圖示與 Tooltip -->
+			<div class="step-title-row">
+				<label class="form-label step-label">步驟 2 · 上傳成分表照片</label>
+				<div class="info-container">
+					<button
+						type="button"
+						class="info-btn"
+						@click="toggleInfoTooltip"
+						@mouseenter="showInfoTooltip = true"
+						@mouseleave="showInfoTooltip = false"
+						aria-label="上傳指南"
+					>
+						!
+					</button>
+					<transition name="fade">
+						<div v-if="showInfoTooltip" class="info-tooltip" @click.stop>
+							<div class="tooltip-arrow"></div>
+							<h4 class="tooltip-title">照片上傳建議</h4>
+							<ul class="tooltip-list">
+								<li><strong>清晰度</strong>：文字需清晰，字體勿模糊。</li>
+								<li><strong>光線</strong>：避免強光反光或大片陰影。</li>
+								<li><strong>平整度</strong>：避免過多摺痕；瓶身有弧度時可分段拍攝多張。</li>
+								<li><strong>關聯性</strong>：若上傳多張照片，請確保<strong>皆為同一款產品</strong>。</li>
+							</ul>
+						</div>
+					</transition>
+				</div>
+			</div>
 
           <div class="upload-fields">
             <input
@@ -75,8 +114,9 @@
           </p>
         </div>
 
-        <!-- 送出按鈕 -->
+        <!-- 送出按鈕 (未分析或分析中) -->
         <button
+          v-if="!result"
           class="btn btn-primary btn-lg action-btn"
           :disabled="imageBase64Array.length === 0 || isLoading"
           @click="analyzeIngredients"
@@ -92,6 +132,15 @@
           @click="saveToCabinet"
         >
           {{ isSaving ? '儲存中...' : '加入保養品櫃' }}
+        </button>
+
+        <!-- 分析新產品按鈕 (已分析完成) -->
+        <button
+          v-if="result && !isLoading"
+          class="btn btn-secondary btn-lg action-btn"
+          @click="resetAnalyzer"
+        >
+          分析新產品 / 重新上傳
         </button>
 
         <div v-if="saveMsg" class="status-box status-success">{{ saveMsg }}</div>
@@ -131,6 +180,29 @@
 
         <!-- 狀態 C：分析結果 -->
         <div v-else class="results-section">
+			<!-- 保留原上傳圖片的折疊預覽框 -->
+			<div class="result-images-collapsible">
+				<button class="collapsible-trigger-btn" type="button" @click="showResultImages = !showResultImages">
+					<span class="btn-icon">📷</span>
+					<span class="btn-text">已分析的成分照片 ({{ imageBase64Array.length }} 張)</span>
+					<span class="btn-arrow" :class="{ 'arrow-expanded': showResultImages }">▼</span>
+				</button>
+				<transition name="collapse">
+					<div v-show="showResultImages" class="result-images-content">
+						<div class="preview-grid compact-grid">
+							<div v-for="(src, idx) in imageBase64Array" :key="idx" class="preview-item compact-item">
+								<div
+									v-if="src.startsWith('data:image/heic') || src.startsWith('data:image/heif')"
+									class="preview-heic"
+								>HEIC</div>
+								<img v-else :src="src" alt="預覽" class="preview-img compact-img" @click="previewSrc = src" />
+								<span class="preview-size-badge compact-badge">{{ Math.round(src.length * 0.75 / 1024) }} KB</span>
+							</div>
+						</div>
+					</div>
+				</transition>
+			</div>
+
           <!-- 膚況未設定時的引導卡片 -->
           <div v-if="showProfileSetupPrompt" class="profile-prompt-card">
             <div class="profile-prompt-card__text">
@@ -274,6 +346,9 @@ const imageBase64Array = ref([])
 const isLoading = ref(false)
 const isUploading = ref(false)
 const isSaving = ref(false)
+const isDragging = ref(false)
+const showInfoTooltip = ref(false)
+const showResultImages = ref(false)
 const result = ref(null)
 const errorMsg = ref(null)
 const saveMsg = ref('')
@@ -344,39 +419,74 @@ const convertHeicFile = async (file: File): Promise<string> => {
   return result.base64
 }
 
-const handleImageUpload = async (event) => {
-  errorMsg.value = null
-  const files = event.target.files
-  if (!files || files.length === 0) return
+const processImageFiles = async (files: FileList | File[]) => {
+	errorMsg.value = null
+	if (!files || files.length === 0) return
 
-  isUploading.value = true
-  await nextTick() // 讓 Vue 先更新 DOM 顯示 spinner，再開始壓縮
-  const errors: string[] = []
-  for (const file of files) {
-    if (file.size > 20 * 1024 * 1024) {
-      errors.push(`「${file.name}」過大（上限 20MB）`)
-      continue
-    }
-    try {
-      let base64: string
-      if (isHeicFile(file)) {
-        base64 = await convertHeicFile(file)
-      } else {
-        base64 = await compressImage(file)
-      }
-      // 壓縮後 base64 超過 1.5MB → 單張已過大，拒絕
-      if (base64.length > 1.5 * 1024 * 1024) {
-        errors.push(`「${file.name}」壓縮後仍過大，請改用較小圖片`)
-        continue
-      }
-      imageBase64Array.value.push(base64)
-    } catch {
-      errors.push(`「${file.name}」讀取失敗`)
-    }
-  }
-  isUploading.value = false
-  if (errors.length) errorMsg.value = errors.join('、') + '，請重試。'
-  event.target.value = ''
+	isUploading.value = true
+	await nextTick()
+	const errors: string[] = []
+	for (const file of files) {
+		if (file.size > 20 * 1024 * 1024) {
+			errors.push(`「${file.name}」過大（上限 20MB）`)
+			continue
+		}
+		try {
+			let base64: string
+			if (isHeicFile(file)) {
+				base64 = await convertHeicFile(file)
+			} else {
+				base64 = await compressImage(file)
+			}
+			if (base64.length > 1.5 * 1024 * 1024) {
+				errors.push(`「${file.name}」壓縮後仍過大，請改用較小圖片`)
+				continue
+			}
+			imageBase64Array.value.push(base64)
+		} catch {
+			errors.push(`「${file.name}」讀取失敗`)
+		}
+	}
+	isUploading.value = false
+	if (errors.length) errorMsg.value = errors.join('、') + '，請重試。'
+}
+
+const handleImageUpload = async (event: any) => {
+	if (isLoading.value || isUploading.value) return
+	const files = event.target.files
+	await processImageFiles(files)
+	event.target.value = ''
+}
+
+const handleDragOver = (event: DragEvent) => {
+	event.preventDefault()
+	if (isLoading.value || isUploading.value) return
+	isDragging.value = true
+}
+
+const handleDragLeave = (event: DragEvent) => {
+	event.preventDefault()
+	isDragging.value = false
+}
+
+const handleDrop = async (event: DragEvent) => {
+	event.preventDefault()
+	isDragging.value = false
+	if (isLoading.value || isUploading.value) return
+	if (event.dataTransfer?.files) {
+		const files = Array.from(event.dataTransfer.files).filter(
+			(file) => file.type.startsWith('image/') || isHeicFile(file)
+		)
+		if (files.length > 0) {
+			await processImageFiles(files)
+		} else {
+			errorMsg.value = '請拖拽圖片格式的檔案 (.jpg, .png, .heic 等)'
+		}
+	}
+}
+
+const toggleInfoTooltip = () => {
+	showInfoTooltip.value = !showInfoTooltip.value
 }
 
 const previewSrc = ref(null)
@@ -505,8 +615,18 @@ const saveToCabinet = async () => {
 }
 
 const handleLogout = async () => {
-  await supabase.auth.signOut()
-  result.value = null
+	await supabase.auth.signOut()
+	result.value = null
+}
+
+const resetAnalyzer = () => {
+	imageBase64Array.value = []
+	result.value = null
+	productName.value = ''
+	errorMsg.value = null
+	saveMsg.value = ''
+	analysisReady.value = false
+	pendingAnalysisData.value = null
 }
 
 onMounted(() => {
@@ -1003,5 +1123,210 @@ onMounted(() => {
   .result-label {
     font-size: 12px;
   }
+}
+
+/* 拖拽動態邊框與背景 */
+.upload-card {
+	position: relative;
+	transition: border-color 0.25s ease, background-color 0.25s ease;
+}
+.upload-card.drag-active {
+	border-color: var(--color-accent) !important;
+	background-color: var(--color-accent-light) !important;
+}
+.upload-card.drag-active * {
+	pointer-events: none;
+}
+.drag-overlay {
+	position: absolute;
+	inset: 0;
+	background: rgba(245, 240, 235, 0.95);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--radius-lg);
+	z-index: 10;
+	pointer-events: none;
+	animation: fadeIn 0.15s ease-out;
+}
+.drag-icon {
+	font-size: 32px;
+	margin-bottom: var(--space-2);
+	animation: bounce 1s infinite alternate;
+}
+.drag-text {
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--color-accent);
+	margin: 0;
+}
+
+/* 步驟 2 標題列 */
+.step-title-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--space-3);
+}
+.step-title-row .step-label {
+	margin-bottom: 0;
+}
+
+/* 提示驚嘆號與氣泡 */
+.info-container {
+	position: relative;
+	display: inline-block;
+}
+.info-btn {
+	background: var(--color-surface-alt);
+	border: 1px solid var(--color-border);
+	color: var(--color-text-secondary);
+	border-radius: 50%;
+	width: 22px;
+	height: 22px;
+	font-size: 11px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	padding: 0;
+}
+.info-btn:hover {
+	background: var(--color-accent);
+	border-color: var(--color-accent);
+	color: #fff;
+}
+.info-tooltip {
+	position: absolute;
+	right: 0;
+	top: 32px;
+	width: 280px;
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow-md);
+	padding: var(--space-4);
+	z-index: 50;
+	text-align: left;
+}
+.tooltip-arrow {
+	position: absolute;
+	top: -6px;
+	right: 8px;
+	width: 10px;
+	height: 10px;
+	background: var(--color-surface);
+	border-top: 1px solid var(--color-border);
+	border-left: 1px solid var(--color-border);
+	transform: rotate(45deg);
+}
+.tooltip-title {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-text-primary);
+	margin: 0 0 var(--space-2) 0;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.tooltip-list {
+	margin: 0;
+	padding-left: 0;
+	list-style: none;
+	font-size: 12px;
+	color: var(--color-text-secondary);
+	line-height: 1.6;
+}
+.tooltip-list li {
+	margin-bottom: 4px;
+}
+
+/* 顯示結果時的折疊預覽 */
+.result-images-collapsible {
+	background: var(--color-surface-alt);
+	border: 1px solid var(--color-border-light);
+	border-radius: var(--radius-md);
+	margin-bottom: var(--space-4);
+	overflow: hidden;
+}
+.collapsible-trigger-btn {
+	width: 100%;
+	background: none;
+	border: none;
+	display: flex;
+	align-items: center;
+	padding: var(--space-3) var(--space-4);
+	cursor: pointer;
+	font-family: var(--font-body);
+	font-size: 13px;
+	color: var(--color-text-secondary);
+	transition: background 0.15s;
+}
+.collapsible-trigger-btn:hover {
+	background: var(--color-border-light);
+}
+.collapsible-trigger-btn .btn-icon {
+	margin-right: 6px;
+}
+.collapsible-trigger-btn .btn-text {
+	flex: 1;
+	text-align: left;
+	font-weight: 500;
+}
+.collapsible-trigger-btn .btn-arrow {
+	font-size: 10px;
+	transition: transform 0.25s ease;
+	color: var(--color-text-muted);
+}
+.btn-arrow.arrow-expanded {
+	transform: rotate(180deg);
+}
+.result-images-content {
+	padding: 0 var(--space-4) var(--space-4);
+	border-top: 1px solid var(--color-border-light);
+	background: var(--color-surface);
+}
+.compact-grid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	padding-top: var(--space-3);
+}
+.compact-img {
+	max-height: 70px !important;
+	border-radius: var(--radius-sm);
+}
+.compact-badge {
+	bottom: 4px !important;
+	left: 4px !important;
+	font-size: 9px !important;
+}
+
+/* 載入/淡入淡出動畫 */
+.fade-enter-active, .fade-leave-active {
+	transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.fade-enter-from, .fade-leave-to {
+	opacity: 0;
+	transform: translateY(-8px);
+}
+.collapse-enter-active, .collapse-leave-active {
+	transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+	max-height: 200px;
+	overflow: hidden;
+}
+.collapse-enter-from, .collapse-leave-to {
+	max-height: 0;
+	opacity: 0;
+}
+@keyframes fadeIn {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+@keyframes bounce {
+	from { transform: translateY(0); }
+	to { transform: translateY(-4px); }
 }
 </style>

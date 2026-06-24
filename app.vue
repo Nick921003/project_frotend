@@ -3,7 +3,10 @@
   <div>
     <nav class="nav">
       <div class="nav-inner">
-        <NuxtLink to="/" class="nav-brand">A.R.C.</NuxtLink>
+        <NuxtLink to="/" class="nav-brand">
+          <img src="/favicon.png" alt="A.R.C. Logo" class="nav-brand-logo" />
+          <span>A.R.C.</span>
+        </NuxtLink>
 
         <div class="nav-right">
           <a
@@ -72,6 +75,10 @@ useHead({
   meta: [
     { name: 'description', content: '智慧保養分析平台，透過 AI 解析成分、建立個人化排程，讓你的保養更有效率。' },
     { name: 'keywords', content: '保養, 成分分析, 護膚, AI保養, 排程管理' }
+  ],
+  link: [
+    { rel: 'icon', type: 'image/png', href: '/favicon.png' },
+    { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
   ]
 })
 
@@ -130,10 +137,20 @@ onUnmounted(() => document.removeEventListener('click', closeMenu))
   color: var(--color-text-primary);
   text-decoration: none;
   letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .nav-brand:hover {
   color: var(--color-accent);
+}
+
+.nav-brand-logo {
+  height: 32px;
+  width: 32px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
 }
 
 .nav-right {

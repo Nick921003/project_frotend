@@ -64,16 +64,23 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
+useSeoMeta({
+	title: 'A.R.C. 保養分析系統',
+	ogTitle: 'A.R.C. 保養分析系統',
+	description: '智慧保養分析平台，透過 AI 解析成分、建立個人化排程，讓你的保養更有效率。',
+	ogDescription: '智慧保養分析平台，透過 AI 解析成分、建立個人化排程，讓你的保養更有效率。',
+	ogImage: 'https://project-frotend.vercel.app/favicon.png',
+	twitterCard: 'summary_large_image',
+	twitterTitle: 'A.R.C. 保養分析系統',
+	twitterDescription: '智慧保養分析平台，透過 AI 解析成分、建立個人化排程，讓你的保養更有效率。',
+	twitterImage: 'https://project-frotend.vercel.app/favicon.png'
+})
+
 useHead({
-  title: 'A.R.C. 保養分析系統',
-  meta: [
-    { name: 'description', content: '智慧保養分析平台，透過 AI 解析成分、建立個人化排程，讓你的保養更有效率。' },
-    { name: 'keywords', content: '保養, 成分分析, 護膚, AI保養, 排程管理' }
-  ],
-  link: [
-    { rel: 'icon', type: 'image/png', href: '/favicon.png' },
-    { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
-  ]
+	link: [
+		{ rel: 'icon', type: 'image/png', href: '/favicon.png' },
+		{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
+	]
 })
 
 const showProfileMenu = ref(false)
